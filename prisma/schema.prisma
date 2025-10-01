@@ -1,5 +1,3 @@
-// schema.prisma (MongoDB, ready-to-use)
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,6 +5,38 @@ generator client {
 datasource db {
   provider = "mongodb"
   url      = env("DATABASE_URL")
+}
+
+// ========================
+// Tenant & User Relationships
+// ========================
+
+model Tenant {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  code      String   @unique 
+  address   String?
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patients  Patient[]
+  inventory Inventory[]
+  users     UserTenant[]
+}
+
+model UserTenant {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  userId   String @db.ObjectId
+  tenantId String @db.ObjectId
+  role     Role
+
+  user   User   @relation(fields: [userId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, tenantId]) // prevent duplicates
 }
 
 // ========================
@@ -35,6 +65,8 @@ model Patient {
   billing    Billing[]
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
+  tenantId   String      @db.ObjectId
+  Tenant     Tenant      @relation(fields: [tenantId], references: [id])
 }
 
 model Visit {
@@ -45,8 +77,8 @@ model Visit {
   visitDate DateTime @default(now())
   notes     String?
 
-  consultationFee Float? // Optional — only charged if outside 14 days window
-  feeValidUntil   DateTime? // When consultation fee validity expires
+  consultationFee Float?
+  feeValidUntil   DateTime?
 
   prescriptions Prescription[]
   Patient       Patient        @relation(fields: [patientId], references: [id])
@@ -86,7 +118,7 @@ model Billing {
 
 model Doctor {
   id        String  @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String  @unique @db.ObjectId // link to User
+  userId    String  @unique @db.ObjectId
   specialty String?
   phone     String?
 
@@ -95,7 +127,7 @@ model Doctor {
 
 model Staff {
   id     String  @id @default(auto()) @map("_id") @db.ObjectId
-  userId String  @unique @db.ObjectId // link to User
+  userId String  @unique @db.ObjectId
   phone  String?
 
   user User @relation(fields: [userId], references: [id])
@@ -112,8 +144,10 @@ model User {
   role      Role     @default(STAFF)
   name      String?
   createdAt DateTime @default(now())
-  Doctor    Doctor?
-  Staff     Staff?
+
+  Doctor  Doctor?
+  Staff   Staff?
+  tenants UserTenant[]
 }
 
 model Inventory {
@@ -122,6 +156,8 @@ model Inventory {
   quantity  Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  tenantId  String   @db.ObjectId
+  Tenant    Tenant   @relation(fields: [tenantId], references: [id])
 }
 
 // ========================

@@ -1,5 +1,5 @@
 // auth/dto/login.dto.ts
-import { IsEmail, IsNotEmpty } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class LoginDto {
   @IsEmail({}, { message: 'Invalid email address' })
@@ -7,4 +7,7 @@ export class LoginDto {
 
   @IsNotEmpty({ message: 'Password is required' })
   password: string;
+
+  @IsOptional()
+  tenantCode?: string; // optional
 }

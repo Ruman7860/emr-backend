@@ -17,10 +17,10 @@ export class AuthController {
       throw new BadRequestException('Email and password are required');
     }
 
-    const user: UserType =  await this.authService.validateUser(body.email, body.password);
-    if (!user) throw new UnauthorizedException('Invalid credentials');
+    const userObj = await this.authService.validateUser(body.email, body.password);
+    if (!userObj) throw new UnauthorizedException('Invalid credentials');
 
-    return this.authService.login(user);
+    return this.authService.login(userObj, body.tenantCode);
   }
 
   @ApiOperation({ summary: 'Signup user' })
