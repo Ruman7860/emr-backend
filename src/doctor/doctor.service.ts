@@ -11,7 +11,7 @@ export class DoctorService {
   async createDoctor(data: CreateDoctorDto) {
     try {
       const existingUser = await this.prisma.user.findUnique({ where: { email: data.email } });
-      if (existingUser) throw new BadRequestException('User with this email already exists');
+      if (existingUser) throw new BadRequestException('Doctor with this email already exists');
 
       const hashedPassword = await bcrypt.hash(data.password, 10);
 
