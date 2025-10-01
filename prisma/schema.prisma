@@ -1,14 +1,111 @@
+// schema.prisma (MongoDB, ready-to-use)
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
 }
 
+// ========================
+// Core Models
+// ========================
+
+model Patient {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  firstName   String
+  lastName    String
+  dateOfBirth DateTime
+  gender      String
+  address     String?
+  phone       String?
+  status      PatientStatus @default(ACTIVE)
+
+  registeredById  String  @db.ObjectId
+  registrationFee Float
+  doctorId        String? @db.ObjectId
+  referredTo      String?
+
+  noOfVisits Int @default(0)
+
+  visits     Visit[]
+  operations Operation[]
+  billing    Billing[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model Visit {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  patientId String   @db.ObjectId
+  doctorId  String   @db.ObjectId
+  staffId   String   @db.ObjectId
+  visitDate DateTime @default(now())
+  notes     String?
+
+  consultationFee Float? // Optional — only charged if outside 14 days window
+  feeValidUntil   DateTime? // When consultation fee validity expires
+
+  prescriptions Prescription[]
+  Patient       Patient        @relation(fields: [patientId], references: [id])
+}
+
+model Prescription {
+  id           String  @id @default(auto()) @map("_id") @db.ObjectId
+  visitId      String  @db.ObjectId
+  drugName     String
+  dosage       String
+  duration     String?
+  instructions String?
+  Visit        Visit   @relation(fields: [visitId], references: [id])
+}
+
+model Operation {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  patientId String   @db.ObjectId
+  name      String
+  date      DateTime
+  surgeonId String   @db.ObjectId
+  outcome   String?
+  fee       Float
+  Patient   Patient  @relation(fields: [patientId], references: [id])
+}
+
+model Billing {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  patientId   String        @db.ObjectId
+  date        DateTime      @default(now())
+  type        BillingType
+  amount      Float
+  status      PaymentStatus
+  paymentMode String?
+  Patient     Patient       @relation(fields: [patientId], references: [id])
+}
+
+model Doctor {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  specialty String?
+  phone     String?
+  // Patients referenced by doctorId in Patient model
+}
+
+model Staff {
+  id    String    @id @default(auto()) @map("_id") @db.ObjectId
+  name  String
+  role  Role
+  phone String?
+  // Patients referenced by registeredById in Patient model
+}
+
+// ========================
+// Supporting Models
+// ========================
+
 model User {
-  id        Int      @id @default(autoincrement())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   email     String   @unique
   password  String
   role      Role     @default(STAFF)
@@ -16,20 +113,33 @@ model User {
   createdAt DateTime @default(now())
 }
 
-model Patient {
-  id            Int      @id @default(autoincrement())
-  name          String
-  medicalHistory String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
 model Inventory {
-  id        Int      @id @default(autoincrement())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   itemName  String
   quantity  Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ========================
+// Enums
+// ========================
+
+enum PatientStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum BillingType {
+  REGISTRATION
+  CONSULTATION
+  OPERATION
+  LAB
+}
+
+enum PaymentStatus {
+  PAID
+  UNPAID
 }
 
 enum Role {
