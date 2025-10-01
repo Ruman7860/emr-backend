@@ -6,11 +6,13 @@ import { AuthModule } from './auth/auth.module';
 // import { PatientsModule } from './patients/patients.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { PrismaService } from 'prisma/prisma.service';
+import { DoctorModule } from './doctor/doctor.module';
 
 @Module({
   imports: [
     AuthModule,
     // PatientsModule,
+    DoctorModule,
     InventoryModule
   ],
   controllers: [AppController],

@@ -86,18 +86,19 @@ model Billing {
 
 model Doctor {
   id        String  @id @default(auto()) @map("_id") @db.ObjectId
-  name      String
+  userId    String  @unique @db.ObjectId // link to User
   specialty String?
   phone     String?
-  // Patients referenced by doctorId in Patient model
+
+  user User @relation(fields: [userId], references: [id])
 }
 
 model Staff {
-  id    String    @id @default(auto()) @map("_id") @db.ObjectId
-  name  String
-  role  Role
-  phone String?
-  // Patients referenced by registeredById in Patient model
+  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId String  @unique @db.ObjectId // link to User
+  phone  String?
+
+  user User @relation(fields: [userId], references: [id])
 }
 
 // ========================
@@ -111,6 +112,8 @@ model User {
   role      Role     @default(STAFF)
   name      String?
   createdAt DateTime @default(now())
+  Doctor    Doctor?
+  Staff     Staff?
 }
 
 model Inventory {
