@@ -12,31 +12,34 @@ datasource db {
 // ========================
 
 model Tenant {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
   name      String
-  code      String   @unique 
+  code      String    @unique
   address   String?
   phone     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   patients  Patient[]
   inventory Inventory[]
   users     UserTenant[]
+  doctors   Doctor[]
+  staff     Staff[]
 }
 
 model UserTenant {
-  id       String @id @default(auto()) @map("_id") @db.ObjectId
-  userId   String @db.ObjectId
-  tenantId String @db.ObjectId
-  role     Role
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  tenantId  String   @db.ObjectId
+  role      Role
+  createdAt DateTime @default(now())
 
   user   User   @relation(fields: [userId], references: [id])
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
-  createdAt DateTime @default(now())
-
-  @@unique([userId, tenantId]) // prevent duplicates
+  @@unique([userId, tenantId])
+  @@index([tenantId])
 }
 
 // ========================
@@ -44,65 +47,87 @@ model UserTenant {
 // ========================
 
 model Patient {
-  id          String        @id @default(auto()) @map("_id") @db.ObjectId
-  firstName   String
-  lastName    String
-  dateOfBirth DateTime
-  gender      String
-  address     String?
-  phone       String?
-  status      PatientStatus @default(ACTIVE)
-
-  registeredById  String  @db.ObjectId
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  firstName       String
+  lastName        String
+  dateOfBirth     DateTime
+  gender          Gender
+  address         String?
+  phone           String?
+  status          PatientStatus @default(ACTIVE)
+  registeredById  String        @db.ObjectId
   registrationFee Float
-  doctorId        String? @db.ObjectId
-  referredTo      String?
+  doctorId        String?       @db.ObjectId
+  referredToId    String?       @db.ObjectId
+  noOfVisits      Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+  tenantId        String        @db.ObjectId
 
-  noOfVisits Int @default(0)
+  tenant       Tenant      @relation(fields: [tenantId], references: [id])
+  registeredBy User        @relation(fields: [registeredById], references: [id])
+  doctor       Doctor?     @relation(fields: [doctorId], references: [id])
+  referredTo   Doctor?     @relation(fields: [referredToId], references: [id], name: "Referral")
+  visits       Visit[]
+  operations   Operation[]
+  billing      Billing[]
+  labTests     LabTest[]
 
-  visits     Visit[]
-  operations Operation[]
-  billing    Billing[]
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  tenantId   String      @db.ObjectId
-  Tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  @@index([tenantId])
+  @@index([phone])
 }
 
 model Visit {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  patientId String   @db.ObjectId
-  doctorId  String   @db.ObjectId
-  staffId   String   @db.ObjectId
-  visitDate DateTime @default(now())
-  notes     String?
-
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  patientId       String    @db.ObjectId
+  doctorId        String    @db.ObjectId
+  staffId         String    @db.ObjectId
+  visitDate       DateTime  @default(now())
+  notes           String?
   consultationFee Float?
   feeValidUntil   DateTime?
+  createdAt       DateTime  @default(now())
+  deletedAt       DateTime?
 
+  patient       Patient        @relation(fields: [patientId], references: [id])
+  doctor        Doctor         @relation(fields: [doctorId], references: [id])
+  staff         Staff          @relation(fields: [staffId], references: [id])
   prescriptions Prescription[]
-  Patient       Patient        @relation(fields: [patientId], references: [id])
+
+  @@index([patientId, visitDate(sort: Desc)])
 }
 
 model Prescription {
-  id           String  @id @default(auto()) @map("_id") @db.ObjectId
-  visitId      String  @db.ObjectId
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  visitId      String    @db.ObjectId
   drugName     String
   dosage       String
   duration     String?
   instructions String?
-  Visit        Visit   @relation(fields: [visitId], references: [id])
+  createdAt    DateTime  @default(now())
+  deletedAt    DateTime?
+
+  visit Visit @relation(fields: [visitId], references: [id])
+
+  @@index([visitId])
 }
 
 model Operation {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  patientId String   @db.ObjectId
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  patientId String    @db.ObjectId
   name      String
   date      DateTime
-  surgeonId String   @db.ObjectId
+  surgeonId String    @db.ObjectId
   outcome   String?
   fee       Float
-  Patient   Patient  @relation(fields: [patientId], references: [id])
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  patient Patient @relation(fields: [patientId], references: [id])
+  surgeon Doctor  @relation(fields: [surgeonId], references: [id])
+
+  @@index([patientId])
 }
 
 model Billing {
@@ -113,24 +138,71 @@ model Billing {
   amount      Float
   status      PaymentStatus
   paymentMode String?
-  Patient     Patient       @relation(fields: [patientId], references: [id])
+  createdAt   DateTime      @default(now())
+  deletedAt   DateTime?
+
+  patient Patient @relation(fields: [patientId], references: [id])
+
+  @@index([patientId, date(sort: Desc)])
 }
 
-model Doctor {
-  id        String  @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String  @unique @db.ObjectId
-  specialty String?
-  phone     String?
+model LabTest {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  patientId String    @db.ObjectId
+  name      String
+  date      DateTime
+  results   String?
+  fee       Float
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
 
-  user User @relation(fields: [userId], references: [id])
+  patient Patient @relation(fields: [patientId], references: [id])
+
+  @@index([patientId])
+}
+
+// ========================
+// Doctors & Staff
+// ========================
+
+model Doctor {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String    @unique @db.ObjectId // Added @unique for one-to-one
+  tenantId     String    @db.ObjectId
+  specialty    String?
+  phone        String?
+  isActive     Boolean   @default(true)
+  employeeCode String
+  createdAt    DateTime  @default(now())
+  deletedAt    DateTime?
+
+  user       User        @relation(fields: [userId], references: [id])
+  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  patients   Patient[]   @relation
+  visits     Visit[]
+  operations Operation[]
+  referrals  Patient[]   @relation("Referral")
+
+  @@unique([employeeCode, tenantId])
+  @@index([tenantId])
 }
 
 model Staff {
-  id     String  @id @default(auto()) @map("_id") @db.ObjectId
-  userId String  @unique @db.ObjectId
-  phone  String?
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String    @unique @db.ObjectId // Added @unique for one-to-one
+  tenantId     String    @db.ObjectId
+  phone        String?
+  isActive     Boolean   @default(true)
+  employeeCode String
+  createdAt    DateTime  @default(now())
+  deletedAt    DateTime?
 
-  user User @relation(fields: [userId], references: [id])
+  user   User    @relation(fields: [userId], references: [id])
+  tenant Tenant  @relation(fields: [tenantId], references: [id])
+  visits Visit[]
+
+  @@unique([employeeCode, tenantId])
+  @@index([tenantId])
 }
 
 // ========================
@@ -138,26 +210,36 @@ model Staff {
 // ========================
 
 model User {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  email     String   @unique
-  password  String
-  role      Role     @default(STAFF)
-  name      String?
-  createdAt DateTime @default(now())
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  email      String    @unique
+  password   String // Must be hashed in app logic
+  role       Role      @default(STAFF)
+  name       String?
+  createdAt  DateTime  @default(now())
+  lastLogin  DateTime?
+  mfaEnabled Boolean   @default(false)
+  deletedAt  DateTime?
 
-  Doctor  Doctor?
-  Staff   Staff?
-  tenants UserTenant[]
+  doctor             Doctor?
+  staff              Staff?
+  tenants            UserTenant[]
+  registeredPatients Patient[]
 }
 
 model Inventory {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  itemName  String
-  quantity  Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  tenantId  String   @db.ObjectId
-  Tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  itemName    String
+  quantity    Int
+  batchNumber String?
+  expiryDate  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenantId    String    @db.ObjectId
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
 }
 
 // ========================
@@ -167,6 +249,7 @@ model Inventory {
 enum PatientStatus {
   ACTIVE
   INACTIVE
+  SUSPENDED
 }
 
 enum BillingType {
@@ -174,15 +257,26 @@ enum BillingType {
   CONSULTATION
   OPERATION
   LAB
+  OTHER
 }
 
 enum PaymentStatus {
   PAID
   UNPAID
+  PENDING
+  REFUNDED
 }
 
 enum Role {
   ADMIN
   DOCTOR
   STAFF
+  NURSE
+  PATIENT
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
 }

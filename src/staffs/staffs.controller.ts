@@ -1,31 +1,36 @@
-import { BadRequestException, Body, Controller, ForbiddenException, Get, Post, Req, UseGuards } from "@nestjs/common";
-import { ApiBearerAuth } from "@nestjs/swagger";
-import { JwtAuthGuard } from "src/auth/jwt-auth.guard";
-import { CreateStaffDto } from "./dto/staffs.dto";
-import { StaffService } from "./staffs.service";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { StaffsService } from './staffs.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CreateStaffDto } from './dto/create-staff.dto';
+import { UpdateStaffDto } from './dto/update-staff.dto';
 
-@ApiBearerAuth()
-@Controller('staff')
-export class StaffController {
-    constructor(private staffService: StaffService) { }
-    @UseGuards(JwtAuthGuard)
-    @Post()
-    async createStaff(@Body() body: CreateStaffDto, @Req() req: any) {
-        const user = req.user;
-        if (!user || user.role !== 'ADMIN') {
-            throw new ForbiddenException('Only admins can create staff');
-        }
+@Controller('staffs')
+@UseGuards(JwtAuthGuard)
+export class StaffsController {
+  constructor(private readonly staffsService: StaffsService) {}
 
-        if (!body.name || !body.email) {
-            throw new BadRequestException('Name and email are required');
-        }
+  @Post()
+  async create(@Body() createStaffDto: CreateStaffDto, @Req() req) {
+    return this.staffsService.create(createStaffDto, req.user);
+  }
 
-        return await this.staffService.createStaff(body)
-    }
+  @Get()
+  async findAll(@Req() req) {
+    return this.staffsService.findAll(req.user);
+  }
 
-    @UseGuards(JwtAuthGuard)
-    @Get()
-    async findAll() {
-        return await this.staffService.getAllStaffs();
-    }
+  @Get(':id')
+  async findOne(@Param('id') id: string, @Req() req) {
+    return this.staffsService.findOne(id, req.user);
+  }
+
+  @Patch(':id')
+  async update(@Param('id') id: string, @Body() updateStaffDto: UpdateStaffDto, @Req() req) {
+    return this.staffsService.update(id, updateStaffDto, req.user);
+  }
+
+  @Delete(':id')
+  async remove(@Param('id') id: string, @Req() req) {
+    return this.staffsService.remove(id, req.user);
+  }
 }

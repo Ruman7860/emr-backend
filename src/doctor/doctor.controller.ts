@@ -1,36 +1,36 @@
-// src/doctor/doctor.controller.ts
-import { Controller, Post, Get, Body, UseGuards, Req, ForbiddenException, BadRequestException } from '@nestjs/common';
-import { DoctorService } from './doctor.service';
-import { CreateDoctorDto } from './dto/doctor.dto';
-import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
-import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { DoctorsService } from './doctor.service';
+import { CreateDoctorDto } from './dto/create-doctor.dto';
+import { UpdateDoctorDto } from './dto/update-doctor.dto';
 
-@ApiBearerAuth()
-@Controller('doctor')
-export class DoctorController {
-  constructor(private doctorService: DoctorService) {}
+@Controller('doctors')
+@UseGuards(JwtAuthGuard)
+export class DoctorsController {
+  constructor(private readonly doctorsService: DoctorsService) {}
 
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Create a doctor (Admin only)' })
   @Post()
-  async create(@Body() body: CreateDoctorDto, @Req() req: any) {
-    const user = req.user;
-
-    if (!user || user.role !== 'ADMIN') {
-      throw new ForbiddenException('Only admins can create doctors');
-    }
-
-    if (!body.name || !body.email) {
-      throw new BadRequestException('Name and email are required');
-    }
-
-    return await this.doctorService.createDoctor(body);
+  async create(@Body() createDoctorDto: CreateDoctorDto, @Req() req) {
+    return this.doctorsService.create(createDoctorDto, req.user);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Get all doctors' })
   @Get()
-  async findAll() {
-    return await this.doctorService.getAllDoctors();
+  async findAll(@Req() req) {
+    return this.doctorsService.findAll(req.user);
+  }
+
+  @Get(':id')
+  async findOne(@Param('id') id: string, @Req() req) {
+    return this.doctorsService.findOne(id, req.user);
+  }
+
+  @Patch(':id')
+  async update(@Param('id') id: string, @Body() updateDoctorDto: UpdateDoctorDto, @Req() req) {
+    return this.doctorsService.update(id, updateDoctorDto, req.user);
+  }
+
+  @Delete(':id')
+  async remove(@Param('id') id: string, @Req() req) {
+    return this.doctorsService.remove(id, req.user);
   }
 }
