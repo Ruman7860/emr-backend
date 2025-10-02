@@ -35,7 +35,7 @@ export class PrescriptionsService {
 
     // Check visit exists and is in tenant
     const visit = await this.prisma.visit.findUnique({
-      where: { id: visitId, deletedAt: null },
+      where: { id: visitId },
       include: { patient: true },
     });
     if (!visit || visit.patient.tenantId !== user.tenantId) {
