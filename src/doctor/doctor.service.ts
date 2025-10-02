@@ -44,7 +44,7 @@ export class DoctorsService {
 
     // Check if tenant exists and is not soft-deleted
     const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId, deletedAt: null },
+      where: { id: tenantId,  },
     });
     if (!tenant) {
       return {
@@ -70,7 +70,7 @@ export class DoctorsService {
 
     // Check for duplicate employeeCode in tenant
     const existingDoctor = await this.prisma.doctor.findFirst({
-      where: { employeeCode, tenantId, deletedAt: null },
+      where: { employeeCode, tenantId,  },
     });
     if (existingDoctor) {
       return {
@@ -145,7 +145,7 @@ export class DoctorsService {
 
     try {
       const doctors = await this.prisma.doctor.findMany({
-        where: { tenantId: user.tenantId, deletedAt: null },
+        where: { tenantId: user.tenantId,  },
         include: { user: true, tenant: true },
       });
       return {
@@ -225,7 +225,6 @@ export class DoctorsService {
         where: {
           employeeCode: updateDoctorDto.employeeCode,
           tenantId: user.tenantId,
-          deletedAt: null,
         },
       });
       if (existingDoctor && existingDoctor.id !== id) {
