@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { Role, Prisma } from '@prisma/client';
 import { PrismaService } from 'prisma/prisma.service';
 import { CreatePrescriptionDto } from './dto/create-prescription.dto';
 import { UpdatePrescriptionDto } from './dto/update-prescription.dto';
@@ -58,10 +58,18 @@ export class PrescriptionsService {
     }
 
     try {
+      // Transform medications to plain JSON array
+      const medicationsJson: Prisma.InputJsonValue = medications.map(({ drugName, dosage, duration, instructions }) => ({
+        drugName,
+        dosage,
+        duration,
+        instructions,
+      }));
+
       const prescription = await this.prisma.prescription.create({
         data: {
           visitId,
-          medications,
+          medications: medicationsJson,
         },
       });
 
@@ -188,9 +196,20 @@ export class PrescriptionsService {
     }
 
     try {
+      // Transform medications to plain JSON array if provided
+      const data: Prisma.PrescriptionUpdateInput = {};
+      if (updatePrescriptionDto.medications) {
+        data.medications = updatePrescriptionDto.medications.map(({ drugName, dosage, duration, instructions }) => ({
+          drugName,
+          dosage,
+          duration,
+          instructions,
+        }));
+      }
+
       const updatedPrescription = await this.prisma.prescription.update({
         where: { id },
-        data: updatePrescriptionDto,
+        data,
       });
 
       return {

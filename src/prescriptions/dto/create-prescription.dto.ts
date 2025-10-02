@@ -1,8 +1,7 @@
 import { IsString, IsNotEmpty, IsArray, IsOptional, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
-import { Prisma } from '@prisma/client';
 
-class MedicationDto {
+export class MedicationDto {
   @IsString()
   @IsNotEmpty()
   drugName: string;
@@ -28,5 +27,5 @@ export class CreatePrescriptionDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => MedicationDto)
-  medications: MedicationDto[]; // JSON-compatible array of medications
+  medications: MedicationDto[];
 }

@@ -1,4 +1,11 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreatePrescriptionDto } from './create-prescription.dto';
+import { IsArray, IsOptional, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { MedicationDto } from './create-prescription.dto';
 
-export class UpdatePrescriptionDto extends PartialType(CreatePrescriptionDto) {}
+export class UpdatePrescriptionDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => MedicationDto)
+  @IsOptional()
+  medications?: MedicationDto[];
+}
