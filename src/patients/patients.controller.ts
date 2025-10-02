@@ -1,35 +1,36 @@
-// import { Controller, Get, Post, Body, UseGuards, Request, UnauthorizedException } from '@nestjs/common';
-// import { PatientsService } from './patients.service';
-// import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-// import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { PatientsService } from './patients.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CreatePatientDto } from './dto/create-patient.dto';
+import { UpdatePatientDto } from './dto/update-patient.dto';
 
-// @ApiTags('patients')
-// @Controller('patients')
-// export class PatientsController {
-//   constructor(private readonly patientsService: PatientsService) { }
+@Controller('patients')
+@UseGuards(JwtAuthGuard)
+export class PatientsController {
+  constructor(private readonly patientsService: PatientsService) {}
 
-//   @ApiOperation({ summary: 'Get all patients' })
-//   @ApiBearerAuth()
-//   @UseGuards(JwtAuthGuard)
-//   @Get()
-//   async findAll(@Request() req) {
-//     const start = Date.now();
-//     if (!['ADMIN', 'DOCTOR'].includes(req.user.role)) {
-//       throw new UnauthorizedException('Insufficient permissions');
-//     }
-//     const patients = await this.patientsService.findAll();
-//     console.log('Patients fetch time:', Date.now() - start, 'ms');
-//     return patients;
-//   }
+  @Post()
+  async create(@Body() createPatientDto: CreatePatientDto, @Req() req) {
+    return this.patientsService.create(createPatientDto, req.user);
+  }
 
-//   @ApiOperation({ summary: 'Create a patient' })
-//   @ApiBearerAuth()
-//   @UseGuards(JwtAuthGuard)
-//   @Post()
-//   async create(@Request() req, @Body() body: { name: string; medicalHistory?: string }) {
-//     if (!['ADMIN', 'DOCTOR'].includes(req.user.role)) {
-//       throw new UnauthorizedException('Insufficient permissions');
-//     }
-//     return this.patientsService.create(body);
-//   }
-// }
+  @Get()
+  async findAll(@Req() req) {
+    return this.patientsService.findAll(req.user);
+  }
+
+  @Get(':id')
+  async findOne(@Param('id') id: string, @Req() req) {
+    return this.patientsService.findOne(id, req.user);
+  }
+
+  @Patch(':id')
+  async update(@Param('id') id: string, @Body() updatePatientDto: UpdatePatientDto, @Req() req) {
+    return this.patientsService.update(id, updatePatientDto, req.user);
+  }
+
+  @Delete(':id')
+  async remove(@Param('id') id: string, @Req() req) {
+    return this.patientsService.remove(id, req.user);
+  }
+}

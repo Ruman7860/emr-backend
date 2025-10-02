@@ -48,8 +48,7 @@ model UserTenant {
 
 model Patient {
   id              String        @id @default(auto()) @map("_id") @db.ObjectId
-  firstName       String
-  lastName        String
+  fullName        String
   dateOfBirth     DateTime
   gender          Gender
   address         String?
@@ -58,7 +57,9 @@ model Patient {
   registeredById  String        @db.ObjectId
   registrationFee Float
   doctorId        String?       @db.ObjectId
-  referredToId    String?       @db.ObjectId
+  referredTo      String?
+  referredReason  String?
+  patientNumber   String
   noOfVisits      Int           @default(0)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -68,14 +69,15 @@ model Patient {
   tenant       Tenant      @relation(fields: [tenantId], references: [id])
   registeredBy User        @relation(fields: [registeredById], references: [id])
   doctor       Doctor?     @relation(fields: [doctorId], references: [id])
-  referredTo   Doctor?     @relation(fields: [referredToId], references: [id], name: "Referral")
   visits       Visit[]
   operations   Operation[]
   billing      Billing[]
   labTests     LabTest[]
 
+  @@unique([patientNumber, tenantId])
   @@index([tenantId])
   @@index([phone])
+  @@index([patientNumber])
 }
 
 model Visit {
@@ -99,14 +101,11 @@ model Visit {
 }
 
 model Prescription {
-  id           String    @id @default(auto()) @map("_id") @db.ObjectId
-  visitId      String    @db.ObjectId
-  drugName     String
-  dosage       String
-  duration     String?
-  instructions String?
-  createdAt    DateTime  @default(now())
-  deletedAt    DateTime?
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  visitId     String    @db.ObjectId
+  medications Json // Array of { drugName: string, dosage: string, duration: string?, instructions: string? }
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
 
   visit Visit @relation(fields: [visitId], references: [id])
 
@@ -137,7 +136,7 @@ model Billing {
   type        BillingType
   amount      Float
   status      PaymentStatus
-  paymentMode String?
+  paymentMode PaymentMode?
   createdAt   DateTime      @default(now())
   deletedAt   DateTime?
 
@@ -167,7 +166,7 @@ model LabTest {
 
 model Doctor {
   id           String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId       String    @unique @db.ObjectId // Added @unique for one-to-one
+  userId       String    @unique @db.ObjectId
   tenantId     String    @db.ObjectId
   specialty    String?
   phone        String?
@@ -181,7 +180,6 @@ model Doctor {
   patients   Patient[]   @relation
   visits     Visit[]
   operations Operation[]
-  referrals  Patient[]   @relation("Referral")
 
   @@unique([employeeCode, tenantId])
   @@index([tenantId])
@@ -189,7 +187,7 @@ model Doctor {
 
 model Staff {
   id           String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId       String    @unique @db.ObjectId // Added @unique for one-to-one
+  userId       String    @unique @db.ObjectId
   tenantId     String    @db.ObjectId
   phone        String?
   isActive     Boolean   @default(true)
@@ -212,7 +210,7 @@ model Staff {
 model User {
   id         String    @id @default(auto()) @map("_id") @db.ObjectId
   email      String    @unique
-  password   String // Must be hashed in app logic
+  password   String
   role       Role      @default(STAFF)
   name       String?
   createdAt  DateTime  @default(now())
@@ -250,6 +248,7 @@ enum PatientStatus {
   ACTIVE
   INACTIVE
   SUSPENDED
+  REFERRED
 }
 
 enum BillingType {
@@ -278,5 +277,11 @@ enum Role {
 enum Gender {
   MALE
   FEMALE
+}
+
+enum PaymentMode {
+  CASH
+  CARD
+  UPI
   OTHER
 }
