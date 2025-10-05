@@ -34,6 +34,7 @@ model UserTenant {
   tenantId  String   @db.ObjectId
   role      Role
   createdAt DateTime @default(now())
+  deletedAt DateTime? // Add this for soft deletion
 
   user   User   @relation(fields: [userId], references: [id])
   tenant Tenant @relation(fields: [tenantId], references: [id])

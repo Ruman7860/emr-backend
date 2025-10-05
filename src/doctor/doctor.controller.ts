@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { DoctorsService } from './doctor.service';
 import { CreateDoctorDto } from './dto/create-doctor.dto';
@@ -7,7 +7,7 @@ import { UpdateDoctorDto } from './dto/update-doctor.dto';
 @Controller('doctors')
 @UseGuards(JwtAuthGuard)
 export class DoctorsController {
-  constructor(private readonly doctorsService: DoctorsService) {}
+  constructor(private readonly doctorsService: DoctorsService) { }
 
   @Post()
   async create(@Body() createDoctorDto: CreateDoctorDto, @Req() req) {
@@ -15,8 +15,8 @@ export class DoctorsController {
   }
 
   @Get()
-  async findAll(@Req() req) {
-    return this.doctorsService.findAll(req.user);
+  async findAll(@Req() req, @Query('limit') limit?: number, @Query('offset') offset?: number) {
+    return this.doctorsService.findAll(req.user, limit, offset);
   }
 
   @Get(':id')
@@ -32,5 +32,13 @@ export class DoctorsController {
   @Delete(':id')
   async remove(@Param('id') id: string, @Req() req) {
     return this.doctorsService.remove(id, req.user);
+  }
+
+  @Patch(':id/restore')
+  async restoreDoctor(
+    @Param('id') id: string,
+    @Req() req: any
+  ) {
+    return this.doctorsService.restore(id, { id: req.user.id, tenantId: req.user.tenantId });
   }
 }

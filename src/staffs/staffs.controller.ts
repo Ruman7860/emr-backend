@@ -33,4 +33,12 @@ export class StaffsController {
   async remove(@Param('id') id: string, @Req() req) {
     return this.staffsService.remove(id, req.user);
   }
+
+  @Patch(':id/restore')
+  async restoreStaff(
+    @Param('id') id: string,
+    @Req() req: any,
+  ) {
+    return this.staffsService.restore(id, { id: req.user.id, tenantId: req.user.tenantId });
+  }
 }
