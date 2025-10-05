@@ -7,7 +7,7 @@ dotenv.config(); // Load .env file
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.enableCors({ origin: "http://localhost:3000" });
+  app.enableCors({ origin: process.env.FRONTEND_URL });
 
   const config = new DocumentBuilder()
     .setTitle('Clinic Management API')
