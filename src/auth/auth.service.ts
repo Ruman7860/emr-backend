@@ -4,11 +4,16 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { SignupDto } from './dto/signup.dto';
 import { UserType } from 'types/types';
-import { nanoid } from 'nanoid'; // lightweight unique ID generator
+import { nanoid } from 'nanoid/non-secure';
 
 @Injectable()
 export class AuthService {
   constructor(private prisma: PrismaService, private jwtService: JwtService) { }
+
+  async generateTenantCode() {
+  const { nanoid } = await import('nanoid');
+  return nanoid(6).toUpperCase();
+}
 
   async validateUser(email: string, password: string) {
     const user = await this.prisma.user.findUnique({ where: { email } });
@@ -146,7 +151,7 @@ export class AuthService {
       let isUnique = false;
 
       while (!isUnique) {
-        tenantCode = nanoid(6).toUpperCase(); // e.g., ABC123
+        tenantCode = await this.generateTenantCode();
         const existingTenant = await this.prisma.tenant.findUnique({ where: { code: tenantCode } });
         if (!existingTenant) isUnique = true;
       }
