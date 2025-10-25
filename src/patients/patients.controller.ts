@@ -1,13 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { PatientsService } from './patients.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
+import { PatientStatus } from '@prisma/client';
 
 @Controller('patients')
 @UseGuards(JwtAuthGuard)
 export class PatientsController {
-  constructor(private readonly patientsService: PatientsService) {}
+  constructor(private readonly patientsService: PatientsService) { }
 
   @Post()
   async create(@Body() createPatientDto: CreatePatientDto, @Req() req) {
@@ -15,9 +16,22 @@ export class PatientsController {
   }
 
   @Get()
-  async findAll(@Req() req) {
-    return this.patientsService.findAll(req.user);
+  async findAll(
+    @Req() req,
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '10',
+    @Query('search') search?: string,
+    @Query('status') status?: PatientStatus,
+    @Query('deleted') deleted?: string
+  ) {
+    return this.patientsService.findAll(req.user, {
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      search,
+      deleted
+    });
   }
+
 
   @Get(':id')
   async findOne(@Param('id') id: string, @Req() req) {
@@ -33,4 +47,15 @@ export class PatientsController {
   async remove(@Param('id') id: string, @Req() req) {
     return this.patientsService.remove(id, req.user);
   }
+
+    @Post(':id/restore')
+  async restore(@Param('id') id: string, @Req() req) {
+    return this.patientsService.restore(id, req.user);
+  }
+  
+  @Get(':id/timeline')
+  async getTimeline(@Param('id') id: string, @Req() req) {
+    return this.patientsService.getTimeline(id, req.user);
+  }
+
 }
