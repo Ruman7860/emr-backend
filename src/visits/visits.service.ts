@@ -168,7 +168,7 @@ export class VisitsService {
 
             const visits = await this.prisma.visit.findMany({
                 where,
-                include: { patient: true, doctor: true, staff: true, prescriptions: true },
+                include: { patient: true, doctor: true, staff: true, Prescription: true },
                 orderBy: { visitDate: 'desc' },
             });
             return {
@@ -190,7 +190,7 @@ export class VisitsService {
     async findOne(id: string, user: { id: string; tenantId: string }) {
         const visit = await this.prisma.visit.findUnique({
             where: { id },
-            include: { patient: true, doctor: true, staff: true, prescriptions: true },
+            include: { patient: true, doctor: true, staff: true, Prescription: true },
         });
 
         if (!visit || visit.deletedAt) {

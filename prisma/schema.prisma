@@ -29,11 +29,11 @@ model Tenant {
 }
 
 model UserTenant {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String   @db.ObjectId
-  tenantId  String   @db.ObjectId
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String    @db.ObjectId
+  tenantId  String    @db.ObjectId
   role      Role
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
   deletedAt DateTime? // Add this for soft deletion
 
   user   User   @relation(fields: [userId], references: [id])
@@ -50,53 +50,56 @@ model UserTenant {
 model Patient {
   id              String        @id @default(auto()) @map("_id") @db.ObjectId
   fullName        String
-  dateOfBirth     DateTime
+  dateOfBirth     DateTime? // Use this, calculate age dynamically
+  age             Int
   gender          Gender
-  address         String?
   phone           String?
+  address         String?
+  chiefComplaint        String? // ← NEW: "Fever for 3 days", "Chest pain"
+  registrationFee Int // ← In paisa (50000 = ₹500.00)
+  patientNumber   String
   status          PatientStatus @default(ACTIVE)
   registeredById  String        @db.ObjectId
-  registrationFee Float
-  doctorId        String?       @db.ObjectId
-  referredTo      String?
-  referredReason  String?
-  patientNumber   String
   noOfVisits      Int           @default(0)
+  doctorId        String?       @db.ObjectId
+  tenantId        String        @db.ObjectId
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   deletedAt       DateTime?
-  tenantId        String        @db.ObjectId
 
+  // Relations
   tenant       Tenant      @relation(fields: [tenantId], references: [id])
   registeredBy User        @relation(fields: [registeredById], references: [id])
   doctor       Doctor?     @relation(fields: [doctorId], references: [id])
   visits       Visit[]
-  operations   Operation[]
-  billing      Billing[]
-  labTests     LabTest[]
+  Operation    Operation[]
+  Billing      Billing[]
+  LabTest      LabTest[]
 
   @@unique([patientNumber, tenantId])
   @@index([tenantId])
   @@index([phone])
-  @@index([patientNumber])
+  @@index([fullName])
 }
 
 model Visit {
   id              String    @id @default(auto()) @map("_id") @db.ObjectId
   patientId       String    @db.ObjectId
-  doctorId        String    @db.ObjectId
+  doctorId        String?   @db.ObjectId // Optional at registration
   staffId         String    @db.ObjectId
   visitDate       DateTime  @default(now())
+  chiefComplaint  String? // ← "Fever, cough" — from registration
   notes           String?
-  consultationFee Float?
+  consultationFee Int? // In paisa
+  isFirstVisit    Boolean   @default(false)
   feeValidUntil   DateTime?
   createdAt       DateTime  @default(now())
   deletedAt       DateTime?
 
-  patient       Patient        @relation(fields: [patientId], references: [id])
-  doctor        Doctor         @relation(fields: [doctorId], references: [id])
-  staff         Staff          @relation(fields: [staffId], references: [id])
-  prescriptions Prescription[]
+  patient      Patient        @relation(fields: [patientId], references: [id])
+  doctor       Doctor?        @relation(fields: [doctorId], references: [id])
+  staff        Staff          @relation(fields: [staffId], references: [id])
+  Prescription Prescription[]
 
   @@index([patientId, visitDate(sort: Desc)])
 }

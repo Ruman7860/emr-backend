@@ -94,17 +94,39 @@ export class PatientsService {
   }
 
   private async generatePatientNumber(tenantId: string): Promise<string> {
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
-    if (!tenant) throw new NotFoundException('Tenant not found');
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { code: true },
+    });
 
-    const count = await this.prisma.patient.count({ where: { tenantId } });
-    return `PT-${tenant.code.toUpperCase()}-${(count + 1).toString().padStart(3, '0')}`;
+    if (!tenant?.code) {
+      throw new Error('Tenant not found while generating patient number');
+    }
+
+    const year = new Date().getFullYear();
+    const count = await this.prisma.patient.count({
+      where: { tenantId },
+    });
+
+    return `${tenant.code}-${year}-${String(count + 1).padStart(4, '0')}`;
   }
 
   async create(createPatientDto: CreatePatientDto, user: { id: string; tenantId: string }) {
-    const { fullName, dateOfBirth, gender, address, phone, registrationFee, doctorId } = createPatientDto;
+    const {
+      fullName,
+      dateOfBirth,
+      age,
+      gender,
+      address,
+      phone,
+      chiefComplaint,
+      registrationFee,
+      doctorId,
+    } = createPatientDto;
     const tenantId = user.tenantId;
+    console.log(createPatientDto)
 
+    // Authorization
     if (!(await this.isAuthorizedInTenant(user.id, tenantId))) {
       return {
         success: false,
@@ -114,7 +136,7 @@ export class PatientsService {
       };
     }
 
-    // Check tenant exists
+    // Tenant check
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
     });
@@ -127,8 +149,8 @@ export class PatientsService {
       };
     }
 
-    const fee = new Decimal(registrationFee);
-    if (fee.lte(0)) {
+    // Validate fee
+    if (registrationFee <= 0) {
       return {
         success: false,
         message: 'Registration fee must be positive',
@@ -137,10 +159,10 @@ export class PatientsService {
       };
     }
 
-    // Validate doctorId if provided
+    // Validate doctor if provided
     if (doctorId) {
       const doctor = await this.prisma.doctor.findUnique({
-        where: { id: doctorId, tenantId },
+        where: { id: doctorId, tenantId, deletedAt:null },
       });
       if (!doctor) {
         return {
@@ -152,6 +174,7 @@ export class PatientsService {
       }
     }
 
+    // Validate phone
     if (phone && !/^\d{10,15}$/.test(phone)) {
       return {
         success: false,
@@ -161,40 +184,51 @@ export class PatientsService {
       };
     }
 
+    // Generate patient number
     const patientNumber = await this.generatePatientNumber(tenantId);
 
+    console.log("creating patient")
     try {
       const patient = await this.prisma.patient.create({
         data: {
           fullName,
-          dateOfBirth,
+          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+          age,
           gender,
           address,
           phone,
-          registeredById: user.id,
+          chiefComplaint,
           registrationFee,
-          doctorId,
           patientNumber,
+          status: 'ACTIVE',
+          registeredById: user.id,
+          doctorId: doctorId || null,
           tenantId,
+          deletedAt:null
         },
       });
 
+      // Create billing
       await this.prisma.billing.create({
         data: {
           patientId: patient.id,
-          type: BillingType.REGISTRATION,
+          type: 'REGISTRATION',
           amount: registrationFee,
-          status: PaymentStatus.UNPAID,
+          status: 'UNPAID',
+          deletedAt:null
         },
       });
 
+      // Create first visit
       await this.prisma.visit.create({
         data: {
           patientId: patient.id,
-          doctorId: doctorId || '',
+          doctorId: doctorId || null,
           staffId: user.id,
-          notes: 'Initial registration',
+          chiefComplaint,
+          notes: 'Initial registration visit',
           consultationFee: 0,
+          isFirstVisit: true,
         },
       });
 
@@ -205,11 +239,12 @@ export class PatientsService {
 
       return {
         success: true,
-        message: 'Patient created successfully',
+        message: 'Patient registered successfully',
         statusCode: 201,
         data: patient,
       };
     } catch (error) {
+      console.log("error",error)
       return {
         success: false,
         message: 'Failed to create patient',
@@ -239,7 +274,6 @@ export class PatientsService {
     try {
       const where: any = { tenantId: user.tenantId };
 
-      // deleted=true -> show removed patients
       if (query.deleted === 'true') {
         where.deletedAt = { not: null };
       } else {
@@ -257,7 +291,7 @@ export class PatientsService {
       const [patients, total] = await this.prisma.$transaction([
         this.prisma.patient.findMany({
           where,
-          include: { doctor: true, visits: { where: { deletedAt: null } }, billing: { where: { deletedAt: null } } },
+          include: { doctor: true, visits: { where: { deletedAt: null } }, Billing: { where: { deletedAt: null } }, },
           skip,
           take: limit,
           orderBy: { createdAt: 'desc' },
@@ -290,7 +324,7 @@ export class PatientsService {
   async findOne(id: string, user: { id: string; tenantId: string }) {
     const patient = await this.prisma.patient.findUnique({
       where: { id },
-      include: { doctor: true, visits: true, billing: true, labTests: true, operations: true },
+      include: { doctor: true, visits: true, Billing: true, LabTest: true, Operation: true },
     });
 
     if (!patient || patient.deletedAt) {
@@ -326,18 +360,18 @@ export class PatientsService {
         visits: {
           where: { deletedAt: null },
           include: {
-            prescriptions: { where: { deletedAt: null } },
+            Prescription: { where: { deletedAt: null } },
           },
           orderBy: { visitDate: 'desc' },
         },
-        operations: {
+        Operation: {
           where: { deletedAt: null },
           include: { surgeon: { include: { user: true } } },
           orderBy: { date: 'desc' },
         },
-        doctor: { where: { deletedAt: null },include:{user:true} },
-        billing: { where: { deletedAt: null }, orderBy: { date: 'desc' } },
-        labTests: { where: { deletedAt: null }, orderBy: { date: 'desc' } },
+        doctor: { where: { deletedAt: null }, include: { user: true } },
+        Billing: { where: { deletedAt: null }, orderBy: { date: 'desc' } },
+        LabTest: { where: { deletedAt: null }, orderBy: { date: 'desc' } },
       },
     });
 
@@ -375,7 +409,7 @@ export class PatientsService {
 
       // Add visits
       patient.visits.forEach(visit => {
-        const prescriptions: Medication[] = visit.prescriptions
+        const prescriptions: Medication[] = visit.Prescription
           .map(p => p.medications as unknown)
           .filter((med): med is Medication[] => Array.isArray(med))
           .flat()
@@ -393,7 +427,9 @@ export class PatientsService {
             // Use patient.doctor for name if needed
             doctor: patient.doctor
               ? { id: patient.doctor.id, name: patient.doctor.user?.name ?? 'Unknown' }
-              : { id: visit.doctorId, name: 'Unknown' },
+              : visit.doctorId
+                ? { id: visit.doctorId, name: 'Unknown' }
+                : null,
             staff: visit.staffId
               ? { id: visit.staffId, name: 'Unknown' } // You can fetch staff name separately if needed
               : null,
@@ -405,7 +441,7 @@ export class PatientsService {
       });
 
       // Add operations
-      patient.operations.forEach(operation => {
+      patient.Operation.forEach(operation => {
         timeline.push({
           type: 'OPERATION',
           date: operation.date,
@@ -419,7 +455,7 @@ export class PatientsService {
       });
 
       // Add billing
-      patient.billing.forEach(bill => {
+      patient.Billing.forEach(bill => {
         timeline.push({
           type: 'BILLING',
           date: bill.date,
@@ -433,7 +469,7 @@ export class PatientsService {
       });
 
       // Add lab tests
-      patient.labTests.forEach(labTest => {
+      patient.LabTest.forEach(labTest => {
         timeline.push({
           type: 'LAB_TEST',
           date: labTest.date,
