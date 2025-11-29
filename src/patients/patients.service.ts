@@ -124,7 +124,6 @@ export class PatientsService {
       doctorId,
     } = createPatientDto;
     const tenantId = user.tenantId;
-    console.log(createPatientDto)
 
     // Authorization
     if (!(await this.isAuthorizedInTenant(user.id, tenantId))) {
@@ -187,7 +186,6 @@ export class PatientsService {
     // Generate patient number
     const patientNumber = await this.generatePatientNumber(tenantId);
 
-    console.log("creating patient")
     try {
       const patient = await this.prisma.patient.create({
         data: {
