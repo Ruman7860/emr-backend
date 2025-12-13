@@ -22,104 +22,104 @@ export class OperationsService {
     }
 
     async create(createOperationDto: CreateOperationDto, user: { id: string; tenantId: string }) {
-        const { patientId, name, date, surgeonId, fee, outcome } = createOperationDto;
+        // const { patientId, name, date, surgeonId, fee, outcome } = createOperationDto;
 
-        // Check authorization (DOCTOR or ADMIN)
-        if (!(await this.isAuthorizedInTenant(user.id, user.tenantId, [Role.DOCTOR, Role.ADMIN]))) {
-            return {
-                success: false,
-                message: 'You are not authorized to create operations in this tenant',
-                statusCode: 403,
-                data: null,
-            };
-        }
+        // // Check authorization (DOCTOR or ADMIN)
+        // if (!(await this.isAuthorizedInTenant(user.id, user.tenantId, [Role.DOCTOR, Role.ADMIN]))) {
+        //     return {
+        //         success: false,
+        //         message: 'You are not authorized to create operations in this tenant',
+        //         statusCode: 403,
+        //         data: null,
+        //     };
+        // }
 
-        // Check patient exists
-        const patient = await this.prisma.patient.findUnique({
-            where: { id: patientId, tenantId: user.tenantId, deletedAt: null },
-        });
-        if (!patient) {
-            return {
-                success: false,
-                message: 'Patient not found or not in your tenant',
-                statusCode: 404,
-                data: null,
-            };
-        }
+        // // Check patient exists
+        // const patient = await this.prisma.patient.findUnique({
+        //     where: { id: patientId, tenantId: user.tenantId, deletedAt: null },
+        // });
+        // if (!patient) {
+        //     return {
+        //         success: false,
+        //         message: 'Patient not found or not in your tenant',
+        //         statusCode: 404,
+        //         data: null,
+        //     };
+        // }
 
-        // Check surgeon exists
-        const surgeon = await this.prisma.doctor.findUnique({
-            where: { id: surgeonId, tenantId: user.tenantId, deletedAt: null },
-        });
-        if (!surgeon) {
-            return {
-                success: false,
-                message: 'Surgeon not found in this tenant',
-                statusCode: 404,
-                data: null,
-            };
-        }
+        // // Check surgeon exists
+        // const surgeon = await this.prisma.doctor.findUnique({
+        //     where: { id: surgeonId, tenantId: user.tenantId, deletedAt: null },
+        // });
+        // if (!surgeon) {
+        //     return {
+        //         success: false,
+        //         message: 'Surgeon not found in this tenant',
+        //         statusCode: 404,
+        //         data: null,
+        //     };
+        // }
 
-        // Validate fee
-        const operationFee = new Decimal(fee);
-        if (operationFee.lte(0)) {
-            return {
-                success: false,
-                message: 'Operation fee must be positive',
-                statusCode: 400,
-                data: null,
-            };
-        }
+        // // Validate fee
+        // const operationFee = new Decimal(fee);
+        // if (operationFee.lte(0)) {
+        //     return {
+        //         success: false,
+        //         message: 'Operation fee must be positive',
+        //         statusCode: 400,
+        //         data: null,
+        //     };
+        // }
 
-        try {
-            // Create Operation
-            const operation = await this.prisma.operation.create({
-                data: {
-                    patientId,
-                    name,
-                    date: new Date(date),
-                    surgeonId,
-                    fee,
-                    outcome,
-                },
-            });
+        // try {
+        //     // Create Operation
+        //     const operation = await this.prisma.operation.create({
+        //         data: {
+        //             patientId,
+        //             name,
+        //             date: new Date(date),
+        //             surgeonId,
+        //             fee,
+        //             outcome,
+        //         },
+        //     });
 
-            // Create Billing for operation
-            await this.prisma.billing.create({
-                data: {
-                    patientId,
-                    type: BillingType.OPERATION,
-                    amount: fee,
-                    status: PaymentStatus.UNPAID,
-                },
-            });
+        //     // Create Billing for operation
+        //     await this.prisma.billing.create({
+        //         data: {
+        //             patientId,
+        //             type: BillingType.OPERATION,
+        //             amount: fee,
+        //             status: PaymentStatus.UNPAID,
+        //         },
+        //     });
 
-            // Optionally update related Visit notes (e.g., link to current visit)
-            const latestVisit = await this.prisma.visit.findFirst({
-                where: { patientId, deletedAt: null },
-                orderBy: { visitDate: 'desc' },
-            });
-            if (latestVisit) {
-                await this.prisma.visit.update({
-                    where: { id: latestVisit.id },
-                    data: { notes: `${latestVisit.notes || ''}\nOperation scheduled: ${name}` },
-                });
-            }
+        //     // Optionally update related Visit notes (e.g., link to current visit)
+        //     const latestVisit = await this.prisma.visit.findFirst({
+        //         where: { patientId, deletedAt: null },
+        //         orderBy: { visitDate: 'desc' },
+        //     });
+        //     if (latestVisit) {
+        //         await this.prisma.visit.update({
+        //             where: { id: latestVisit.id },
+        //             data: { notes: `${latestVisit.notes || ''}\nOperation scheduled: ${name}` },
+        //         });
+        //     }
 
-            return {
-                success: true,
-                message: 'Operation created successfully',
-                statusCode: 201,
-                data: operation,
-            };
-        } catch (error) {
-            return {
-                success: false,
-                message: 'Failed to create operation',
-                statusCode: 500,
-                data: error.message,
-            };
-        }
+        //     return {
+        //         success: true,
+        //         message: 'Operation created successfully',
+        //         statusCode: 201,
+        //         data: operation,
+        //     };
+        // } catch (error) {
+        //     return {
+        //         success: false,
+        //         message: 'Failed to create operation',
+        //         statusCode: 500,
+        //         data: error.message,
+        //     };
+        // }
     }
 
     async findAll(user: { id: string; tenantId: string }, patientId?: string) {

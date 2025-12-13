@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
 import { PatientStatus } from '@prisma/client';
+import { CollectPaymentDto } from './dto/collect-payment.dto';
 
 @Controller('patients')
 @UseGuards(JwtAuthGuard)
@@ -48,14 +49,27 @@ export class PatientsController {
     return this.patientsService.remove(id, req.user);
   }
 
-    @Post(':id/restore')
+  @Post(':id/restore')
   async restore(@Param('id') id: string, @Req() req) {
     return this.patientsService.restore(id, req.user);
   }
-  
-  @Get(':id/timeline')
-  async getTimeline(@Param('id') id: string, @Req() req) {
-    return this.patientsService.getTimeline(id, req.user);
+
+  // @Get(':id/timeline')
+  // async getTimeline(@Param('id') id: string, @Req() req) {
+  //   return this.patientsService.getTimeline(id, req.user);
+  // }
+
+  @Patch(':id/collect-payment')
+  async collectPayment(
+    @Param('id') patientId: string,
+    @Body() body: CollectPaymentDto,
+    @Req() req: { user: { id: string; tenantId: string } }
+  ) {
+    return this.patientsService.collectPayment(
+      patientId,
+      body,
+      req.user
+    );
   }
 
 }

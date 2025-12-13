@@ -50,14 +50,16 @@ model UserTenant {
 model Patient {
   id              String        @id @default(auto()) @map("_id") @db.ObjectId
   fullName        String
-  dateOfBirth     DateTime? // Use this, calculate age dynamically
+  dateOfBirth     DateTime? 
   age             Int
   gender          Gender
   phone           String?
   address         String?
-  chiefComplaint        String? // ← NEW: "Fever for 3 days", "Chest pain"
-  registrationFee Int // ← In paisa (50000 = ₹500.00)
+  chiefComplaint  String? 
   patientNumber   String
+  visitStatus     VisitStatus   @default(PENDING_PAYMENT)
+  todayVisitId    String?       @db.ObjectId
+  todayVisit      Visit?        @relation("TodayVisit", fields: [todayVisitId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   status          PatientStatus @default(ACTIVE)
   registeredById  String        @db.ObjectId
   noOfVisits      Int           @default(0)
@@ -83,23 +85,26 @@ model Patient {
 }
 
 model Visit {
-  id              String    @id @default(auto()) @map("_id") @db.ObjectId
-  patientId       String    @db.ObjectId
-  doctorId        String?   @db.ObjectId // Optional at registration
-  staffId         String    @db.ObjectId
-  visitDate       DateTime  @default(now())
-  chiefComplaint  String? // ← "Fever, cough" — from registration
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  patientId       String        @db.ObjectId
+  doctorId        String?       @db.ObjectId 
+  staffId         String        @db.ObjectId
+  visitDate       DateTime      @default(now())
+  chiefComplaint  String?
   notes           String?
-  consultationFee Int? // In paisa
-  isFirstVisit    Boolean   @default(false)
+  visitFee Int 
+  serviceFee Int? 
+  todayVisit      Patient[]     @relation("TodayVisit")
+  isFirstVisit    Boolean       @default(false)
   feeValidUntil   DateTime?
-  createdAt       DateTime  @default(now())
+  createdAt       DateTime      @default(now())
   deletedAt       DateTime?
 
   patient      Patient        @relation(fields: [patientId], references: [id])
   doctor       Doctor?        @relation(fields: [doctorId], references: [id])
   staff        Staff          @relation(fields: [staffId], references: [id])
   Prescription Prescription[]
+  billings     Billing[]
 
   @@index([patientId, visitDate(sort: Desc)])
 }
@@ -107,7 +112,7 @@ model Visit {
 model Prescription {
   id          String    @id @default(auto()) @map("_id") @db.ObjectId
   visitId     String    @db.ObjectId
-  medications Json // Array of { drugName: string, dosage: string, duration: string?, instructions: string? }
+  medications Json 
   createdAt   DateTime  @default(now())
   deletedAt   DateTime?
 
@@ -135,6 +140,7 @@ model Operation {
 
 model Billing {
   id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  visitId     String        @db.ObjectId   // 👈 REQUIRED
   patientId   String        @db.ObjectId
   date        DateTime      @default(now())
   type        BillingType
@@ -143,9 +149,11 @@ model Billing {
   paymentMode PaymentMode?
   createdAt   DateTime      @default(now())
   deletedAt   DateTime?
+  // Relations
+  visit       Visit         @relation(fields: [visitId], references: [id])
+  patient     Patient       @relation(fields: [patientId], references: [id])
 
-  patient Patient @relation(fields: [patientId], references: [id])
-
+  @@index([visitId])
   @@index([patientId, date(sort: Desc)])
 }
 
@@ -256,6 +264,8 @@ enum PatientStatus {
 }
 
 enum BillingType {
+  NEW_REGISTRATION
+  FOLLOW_UP_FREE
   REGISTRATION
   CONSULTATION
   OPERATION
@@ -288,4 +298,13 @@ enum PaymentMode {
   CARD
   UPI
   OTHER
+}
+
+enum VisitStatus {
+  PENDING_PAYMENT
+  PAID_WAITING
+  IN_CONSULTATION
+  COMPLETED
+  NO_SHOW
+  CANCELLED
 }
