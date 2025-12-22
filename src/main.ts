@@ -2,12 +2,15 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import * as dotenv from 'dotenv';
+import { SocketIoAdapter } from './socket-io.adapter';
 
 dotenv.config(); // Load .env file
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.enableCors({ origin: process.env.FRONTEND_URL });
+
+  app.useWebSocketAdapter(new SocketIoAdapter(app))
+  app.enableCors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000', credentials: false});
 
   const config = new DocumentBuilder()
     .setTitle('Clinic Management API')

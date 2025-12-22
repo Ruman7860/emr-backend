@@ -70,13 +70,14 @@ model Patient {
   deletedAt       DateTime?
 
   // Relations
-  tenant       Tenant      @relation(fields: [tenantId], references: [id])
-  registeredBy User        @relation(fields: [registeredById], references: [id])
-  doctor       Doctor?     @relation(fields: [doctorId], references: [id])
-  visits       Visit[]
-  Operation    Operation[]
-  Billing      Billing[]
-  LabTest      LabTest[]
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  registeredBy  User           @relation(fields: [registeredById], references: [id])
+  doctor        Doctor?        @relation(fields: [doctorId], references: [id])
+  visits        Visit[]
+  prescriptions Prescription[]
+  Operation     Operation[]
+  Billing       Billing[]
+  LabTest       LabTest[]
 
   @@unique([patientNumber, tenantId])
   @@index([tenantId])
@@ -112,13 +113,16 @@ model Visit {
 model Prescription {
   id          String    @id @default(auto()) @map("_id") @db.ObjectId
   visitId     String    @db.ObjectId
+  patientId   String    @db.ObjectId
   medications Json 
   createdAt   DateTime  @default(now())
   deletedAt   DateTime?
 
-  visit Visit @relation(fields: [visitId], references: [id])
+  visit   Visit   @relation(fields: [visitId], references: [id])
+  patient Patient @relation(fields: [patientId], references: [id])
 
   @@index([visitId])
+  @@index([patientId])
 }
 
 model Operation {

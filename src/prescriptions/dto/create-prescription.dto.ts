@@ -12,6 +12,14 @@ export class MedicationDto {
 
   @IsString()
   @IsOptional()
+  frequency?: string;
+
+  @IsString()
+  @IsOptional()
+  timing?: string;
+
+  @IsString()
+  @IsOptional()
   duration?: string;
 
   @IsString()
@@ -23,6 +31,10 @@ export class CreatePrescriptionDto {
   @IsString()
   @IsNotEmpty()
   visitId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  patientId: string;
 
   @IsArray()
   @ValidateNested({ each: true })

@@ -4,6 +4,8 @@ import { BillingType, PaymentStatus, Role, PatientStatus, PaymentMode } from '@p
 import { PrismaService } from 'prisma/prisma.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
+import { QueueService } from 'src/queue/queue.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 // Define interfaces for timeline events
 interface Medication {
@@ -71,7 +73,11 @@ type TimelineEvent = RegistrationEvent | VisitEvent | OperationEvent | BillingEv
 
 @Injectable()
 export class PatientsService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private prisma: PrismaService,
+    private queueService: QueueService,
+    private eventEmitter: EventEmitter2,
+  ) { }
 
   private async isAuthorizedInTenant(userId: string, tenantId: string): Promise<boolean> {
     const userTenant = await this.prisma.userTenant.findUnique({
@@ -873,6 +879,23 @@ export class PatientsService {
         },
       });
     });
+
+    if (markPaid) {
+      // this.queueService.notifyQueueAdd({
+      //   tenantId: user.tenantId,
+      //   doctorId: visit.doctorId!, 
+      //   visitId: visit.id,
+      //   patientName: patient.fullName,
+      //   visitDate: visit.visitDate,
+      // });
+      this.eventEmitter.emit('queue.add', {
+        tenantId: user.tenantId,
+        doctorId: visit.doctorId!, 
+        visitId: visit.id,
+        patientName: patient.fullName,
+        visitDate: visit.visitDate,
+      });
+    }
 
     return {
       success: true,

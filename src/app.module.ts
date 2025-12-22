@@ -10,6 +10,8 @@ import { PatientsModule } from './patients/patients.module';
 import { VisitsModule } from './visits/visits.module';
 import { PrescriptionsModule } from './prescriptions/prescriptions.module';
 import { OperationsModule } from './operations/operations.module';
+import { QueueModule } from './queue/queue.module';
+import { SocketModule } from './socket/socket.module';
 
 @Module({
   imports: [
@@ -20,7 +22,9 @@ import { OperationsModule } from './operations/operations.module';
     PatientsModule,
     VisitsModule,
     PrescriptionsModule,
-    OperationsModule
+    OperationsModule,
+    QueueModule,
+    SocketModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],

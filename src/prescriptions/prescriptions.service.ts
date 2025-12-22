@@ -6,7 +6,7 @@ import { UpdatePrescriptionDto } from './dto/update-prescription.dto';
 
 @Injectable()
 export class PrescriptionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   private async isAuthorizedInTenant(userId: string, tenantId: string, requiredRoles: Role[]): Promise<boolean> {
     const userTenant = await this.prisma.userTenant.findUnique({
@@ -21,7 +21,7 @@ export class PrescriptionsService {
   }
 
   async create(createPrescriptionDto: CreatePrescriptionDto, user: { id: string; tenantId: string }) {
-    const { visitId, medications } = createPrescriptionDto;
+    const { visitId, patientId, medications } = createPrescriptionDto;
 
     // Check authorization (DOCTOR or ADMIN)
     if (!(await this.isAuthorizedInTenant(user.id, user.tenantId, [Role.DOCTOR, Role.ADMIN]))) {
@@ -47,6 +47,19 @@ export class PrescriptionsService {
       };
     }
 
+    // Check patient exists and is in tenant
+    const patient = await this.prisma.patient.findUnique({
+      where: { id: patientId },
+    });
+    if (!patient || patient.tenantId !== user.tenantId) {
+      return {
+        success: false,
+        message: 'Patient not found or not in your tenant',
+        statusCode: 404,
+        data: null,
+      };
+    }
+
     // Validate medications array
     if (!medications || medications.length === 0) {
       return {
@@ -59,9 +72,11 @@ export class PrescriptionsService {
 
     try {
       // Transform medications to plain JSON array
-      const medicationsJson: Prisma.InputJsonValue = medications.map(({ drugName, dosage, duration, instructions }) => ({
+      const medicationsJson: Prisma.InputJsonValue = medications.map(({ drugName, dosage, frequency, timing, duration, instructions }) => ({
         drugName,
         dosage,
+        frequency,
+        timing,
         duration,
         instructions,
       }));
@@ -69,7 +84,9 @@ export class PrescriptionsService {
       const prescription = await this.prisma.prescription.create({
         data: {
           visitId,
+          patientId,
           medications: medicationsJson,
+          deletedAt: null,
         },
       });
 
@@ -102,14 +119,34 @@ export class PrescriptionsService {
 
     try {
       const where = visitId
-        ? { visitId, deletedAt: null, visit: { patient: { tenantId: user.tenantId, deletedAt: null } } }
+        ? {
+          visitId,
+          deletedAt: null,
+          visit: {
+            deletedAt: null,
+            patient: { tenantId: user.tenantId, deletedAt: null }
+          }
+        }
         : patientId
-        ? { visit: { patientId, patient: { tenantId: user.tenantId, deletedAt: null }, deletedAt: null } }
-        : { visit: { patient: { tenantId: user.tenantId, deletedAt: null }, deletedAt: null } };
+          ? {
+            deletedAt: null,
+            visit: {
+              patientId,
+              deletedAt: null,
+              patient: { tenantId: user.tenantId, deletedAt: null }
+            }
+          }
+          : {
+            deletedAt: null,
+            visit: {
+              deletedAt: null,
+              patient: { tenantId: user.tenantId, deletedAt: null }
+            }
+          };
 
       const prescriptions = await this.prisma.prescription.findMany({
         where,
-        include: { visit: { include: { patient: true, doctor: true } } },
+        include: { visit: { include: { patient: true, doctor: true } }, patient: true },
         orderBy: { createdAt: 'desc' },
       });
 
@@ -132,7 +169,7 @@ export class PrescriptionsService {
   async findOne(id: string, user: { id: string; tenantId: string }) {
     const prescription = await this.prisma.prescription.findUnique({
       where: { id },
-      include: { visit: { include: { patient: true, doctor: true } } },
+      include: { visit: { include: { patient: true, doctor: true } }, patient: true },
     });
 
     if (!prescription || prescription.deletedAt) {
@@ -199,9 +236,11 @@ export class PrescriptionsService {
       // Transform medications to plain JSON array if provided
       const data: Prisma.PrescriptionUpdateInput = {};
       if (updatePrescriptionDto.medications) {
-        data.medications = updatePrescriptionDto.medications.map(({ drugName, dosage, duration, instructions }) => ({
+        data.medications = updatePrescriptionDto.medications.map(({ drugName, dosage, frequency, timing, duration, instructions }) => ({
           drugName,
           dosage,
+          frequency,
+          timing,
           duration,
           instructions,
         }));
