@@ -3,11 +3,12 @@ import { PrescriptionsService } from './prescriptions.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreatePrescriptionDto } from './dto/create-prescription.dto';
 import { UpdatePrescriptionDto } from './dto/update-prescription.dto';
+import { GeneratePrescriptionPdfDto } from './dto/generate-prescription-pdf.dto';
 
 @Controller('prescriptions')
 @UseGuards(JwtAuthGuard)
 export class PrescriptionsController {
-  constructor(private readonly prescriptionsService: PrescriptionsService) {}
+  constructor(private readonly prescriptionsService: PrescriptionsService) { }
 
   @Post()
   async create(@Body() createPrescriptionDto: CreatePrescriptionDto, @Req() req) {
@@ -32,5 +33,15 @@ export class PrescriptionsController {
   @Delete(':id')
   async remove(@Param('id') id: string, @Req() req) {
     return this.prescriptionsService.remove(id, req.user);
+  }
+
+  @Post('generate-pdf')
+  async generatePDF(@Body() dto: GeneratePrescriptionPdfDto, @Req() req) {
+    return this.prescriptionsService.generatePrescriptionPDF(dto.visitId, req.user, dto.version || 1);
+  }
+
+  @Get('documents/:id/download')
+  async downloadPDF(@Param('id') id: string, @Req() req) {
+    return this.prescriptionsService.getPrescriptionDownloadUrl(id, req.user);
   }
 }

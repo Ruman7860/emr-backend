@@ -1,0 +1,21 @@
+model PrescriptionDocument {
+  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
+  prescriptionId     String    @db.ObjectId
+  patientId          String    @db.ObjectId
+  visitId            String    @db.ObjectId
+  doctorId           String?   @db.ObjectId
+  cloudinaryPublicId String
+  fileUrl            String
+  version            Int       @default(1)
+  generatedAt        DateTime  @default(now())
+  deletedAt          DateTime?
+
+  prescription Prescription @relation(fields: [prescriptionId], references: [id])
+  patient      Patient      @relation(fields: [patientId], references: [id])
+  visit        Visit        @relation(fields: [visitId], references: [id])
+  doctor       Doctor?      @relation(fields: [doctorId], references: [id])
+
+  @@index([prescriptionId])
+  @@index([patientId])
+  @@index([visitId])
+}

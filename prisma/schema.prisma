@@ -73,8 +73,9 @@ model Patient {
   tenant        Tenant         @relation(fields: [tenantId], references: [id])
   registeredBy  User           @relation(fields: [registeredById], references: [id])
   doctor        Doctor?        @relation(fields: [doctorId], references: [id])
-  visits        Visit[]
-  prescriptions Prescription[]
+  visits                 Visit[]
+  prescriptions          Prescription[]
+  prescriptionDocuments  PrescriptionDocument[]
   Operation     Operation[]
   Billing       Billing[]
   LabTest       LabTest[]
@@ -101,12 +102,13 @@ model Visit {
   createdAt       DateTime      @default(now())
   deletedAt       DateTime?
 
-  patient      Patient        @relation(fields: [patientId], references: [id])
-  doctor       Doctor?        @relation(fields: [doctorId], references: [id])
-  staff        Staff          @relation(fields: [staffId], references: [id])
-  Prescription Prescription[]
-  billings     Billing[]
-  labTests     LabTest[]
+  patient                Patient                  @relation(fields: [patientId], references: [id])
+  doctor                 Doctor?                  @relation(fields: [doctorId], references: [id])
+  staff                  Staff                    @relation(fields: [staffId], references: [id])
+  Prescription           Prescription[]
+  billings               Billing[]
+  labTests               LabTest[]
+  prescriptionDocuments  PrescriptionDocument[]
 
   @@index([patientId, visitDate(sort: Desc)])
 }
@@ -119,8 +121,9 @@ model Prescription {
   createdAt   DateTime  @default(now())
   deletedAt   DateTime?
 
-  visit   Visit   @relation(fields: [visitId], references: [id])
-  patient Patient @relation(fields: [patientId], references: [id])
+  visit                  Visit                    @relation(fields: [visitId], references: [id])
+  patient                Patient                  @relation(fields: [patientId], references: [id])
+  prescriptionDocuments  PrescriptionDocument[]
 
   @@index([visitId])
   @@index([patientId])
@@ -177,6 +180,28 @@ model LabTest {
   @@index([patientId])
 }
 
+model PrescriptionDocument {
+  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
+  prescriptionId     String    @db.ObjectId
+  patientId          String    @db.ObjectId
+  visitId            String    @db.ObjectId
+  doctorId           String?   @db.ObjectId
+  cloudinaryPublicId String
+  fileUrl            String
+  version            Int       @default(1)
+  generatedAt        DateTime  @default(now())
+  deletedAt          DateTime?
+
+  prescription Prescription @relation(fields: [prescriptionId], references: [id])
+  patient      Patient      @relation(fields: [patientId], references: [id])
+  visit        Visit        @relation(fields: [visitId], references: [id])
+  doctor       Doctor?      @relation(fields: [doctorId], references: [id])
+
+  @@index([prescriptionId])
+  @@index([patientId])
+  @@index([visitId])
+}
+
 // ========================
 // Doctors & Staff
 // ========================
@@ -192,11 +217,12 @@ model Doctor {
   createdAt    DateTime  @default(now())
   deletedAt    DateTime?
 
-  user       User        @relation(fields: [userId], references: [id])
-  tenant     Tenant      @relation(fields: [tenantId], references: [id])
-  patients   Patient[]   @relation
-  visits     Visit[]
-  operations Operation[]
+  user                   User                     @relation(fields: [userId], references: [id])
+  tenant                 Tenant                   @relation(fields: [tenantId], references: [id])
+  patients               Patient[]                @relation
+  visits                 Visit[]
+  operations             Operation[]
+  prescriptionDocuments  PrescriptionDocument[]
 
   @@unique([employeeCode, tenantId])
   @@index([tenantId])
@@ -212,9 +238,9 @@ model Staff {
   createdAt    DateTime  @default(now())
   deletedAt    DateTime?
 
-  user   User    @relation(fields: [userId], references: [id])
-  tenant Tenant  @relation(fields: [tenantId], references: [id])
-  visits Visit[]
+  user    User    @relation(fields: [userId], references: [id])
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  visits  Visit[]
 
   @@unique([employeeCode, tenantId])
   @@index([tenantId])

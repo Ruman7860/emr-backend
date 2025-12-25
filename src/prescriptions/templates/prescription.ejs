@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prescription</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @page {
+            size: A4;
+            margin: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.4;
+            color: #000;
+            background: #fff;
+        }
+
+        .prescription-page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            background: #fff;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header Section */
+        .header {
+            display: flex;
+            align-items: stretch;
+            border-bottom: 2px solid #000;
+        }
+
+        .header-left {
+            /* flex: 1; */
+            padding: 10px 15px;
+            background: #fff;
+        }
+
+        .clinic-name-hindi {
+            font-size: 15pt;
+            font-weight: bold;
+            color: #8B4513;
+            margin-bottom: 1px;
+            line-height: 1.1;
+        }
+
+        .clinic-name-english {
+            font-size: 13pt;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 1px;
+            line-height: 1.1;
+        }
+
+        .clinic-subtitle {
+            font-size: 9pt;
+            color: #8B4513;
+            margin-bottom: 4px;
+        }
+
+        .contact-info {
+            font-size: 8pt;
+            color: #333;
+            line-height: 1.3;
+        }
+
+        .contact-info .phone-icon::before {
+            content: "☎ ";
+        }
+
+        .contact-info .location-icon::before {
+            content: "⌖ ";
+        }
+
+        .clinic-timing {
+            margin-top: 5px;
+            padding: 3px 8px;
+            border: 2px solid #3e4a8f;
+            border-radius: 15px;
+            display: inline-block;
+            font-size: 7pt;
+            line-height: 1.3;
+        }
+
+        .timing-title {
+            color: #fff;
+            background: #3e4a8f;
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-bottom: 2px;
+            display: inline-block;
+            font-size: 7pt;
+        }
+
+        .header-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 12px;
+            background: #fff;
+        }
+
+        .medical-symbol {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #a8d08d 0%, #6fa83e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: #fff;
+            border: 3px solid #6fa83e;
+        }
+
+        .header-right {
+            flex: 1;
+            padding: 10px 15px;
+            background: #4a5fa8;
+            color: #fff;
+        }
+
+        .doctor-entry {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .two-doctor {
+            display: flex;
+            justify-content: space-between;
+            gap: 5px;
+            margin-top: 0;
+        }
+
+        .doctor-name {
+            font-size: 11pt;
+            font-weight: bold;
+            margin-bottom: 1px;
+            line-height: 1.1;
+        }
+
+        .doctor-degree {
+            font-size: 8pt;
+            margin-bottom: 0px;
+            line-height: 1.2;
+        }
+
+        .doctor-specialty {
+            font-size: 7pt;
+            line-height: 1.2;
+        }
+
+        .doctor-reg {
+            font-size: 7pt;
+            margin-top: 1px;
+        }
+
+        /* Patient Info Bar */
+        .patient-info-bar {
+            display: flex;
+            background: #7d9c5e;
+            color: #fff;
+            font-size: 10pt;
+            font-weight: bold;
+            border-bottom: 2px solid #6b8a4e;
+        }
+
+        .patient-info-bar>div {
+            padding: 8px 12px;
+            border-right: 1px solid #6b8a4e;
+        }
+
+        .patient-info-bar>div:last-child {
+            border-right: none;
+        }
+
+        .patient-info-name {
+            flex: 1;
+        }
+
+        .patient-info-address {
+            flex: 3;
+        }
+
+        .patient-info-age {
+            flex: 0.7;
+        }
+
+        .patient-info-weight {
+            flex: 0.7;
+        }
+
+        /* Main Content Area */
+        .content-wrapper {
+            display: flex;
+            flex: 1;
+            min-height: 220mm;
+            border-left: 2px solid #ddd;
+            border-right: 2px solid #ddd;
+        }
+
+        /* Left Investigation Column */
+        .investigation-column {
+            width: 180px;
+            border-right: 2px solid #7d9c5e;
+            padding: 15px 10px;
+            background: #fafafa;
+        }
+
+        .investigation-title {
+            font-weight: bold;
+            font-size: 11pt;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .investigation-list {
+            list-style: none;
+            font-size: 10pt;
+            line-height: 2;
+        }
+
+        .investigation-list li {
+            position: relative;
+            padding-left: 20px;
+        }
+
+        .investigation-list li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 6px;
+            width: 12px;
+            height: 12px;
+            border: 1px solid #666;
+            background: #fff;
+        }
+
+        .investigation-nested {
+            margin-left: 15px;
+            font-size: 9pt;
+        }
+
+
+        .tests-advised {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+
+        .tests-advised p {
+            font-weight: bold;
+            font-size: 10pt;
+        }
+
+        .tests-advised ul {
+            padding-left: 20px;
+            font-size: 9pt;
+        }
+
+        .tests-advised ul li {
+            margin-bottom: 8px;
+            list-style: circle
+        }
+
+        .rx-symbol {
+            font-size: 50pt;
+            color: #ddd;
+            margin-top: 30px;
+            text-align: center;
+            font-family: serif;
+        }
+
+        .rx-symbol_prescription {
+            font-size: 15pt;
+            color: green;
+            font-family: serif;
+            margin-top: 0;
+        }
+
+        /* Right Prescription Column */
+        .prescription-column {
+            flex: 1;
+            padding: 15px 20px;
+            background: #fff;
+            position: relative;
+        }
+
+        .date-line {
+            text-align: right;
+            font-size: 9pt;
+            color: #666;
+            margin-bottom: 20px;
+            padding-bottom: 5px;
+            border-bottom: 1px dotted #ccc;
+        }
+
+        .prescription-content {
+            min-height: 180mm;
+            line-height: 1.8;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .prescription-item {
+            margin-bottom: 15px;
+            page-break-inside: avoid;
+        }
+
+        .prescription-items {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .medication-name {
+            font-weight: bold;
+            font-size: 11pt;
+            color: #000;
+        }
+
+        .medication-details {
+            font-size: 10pt;
+            color: #333;
+            margin-left: 20px;
+        }
+
+        .medication-instructions {
+            font-size: 9pt;
+            color: #666;
+            font-style: italic;
+            margin-left: 20px;
+        }
+
+        .notes-section {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+
+        .notes-title {
+            font-weight: bold;
+            font-size: 10pt;
+        }
+
+        .notes-content {
+            font-size: 9pt;
+            color: #333;
+            /* white-space: pre-wrap; */
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: auto;
+            background: #8B4513;
+            color: #fff;
+            text-align: center;
+            padding: 8px 20px;
+            border-top: 2px solid #000;
+        }
+
+        .footer-text {
+            font-size: 9pt;
+            font-weight: bold;
+        }
+
+        .footer-disclaimer {
+            font-size: 8pt;
+            margin-top: 3px;
+            font-weight: normal;
+        }
+
+        @media print {
+            body {
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+
+            .prescription-page {
+                margin: 0;
+                border: none;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="prescription-page">
+        <!-- Header -->
+        <div class="header">
+            <!-- Left: Clinic Info -->
+            <div class="header-left">
+                <div class="clinic-name-hindi">
+                    <%= clinicNameHindi || 'दिलशेर हेल्थ केयर' %>
+                </div>
+                <div class="clinic-name-english">
+                    <%= clinicNameEnglish || 'Dilsher Health Care' %>
+                        <!-- <div class="medical-symbol">⚕</div> -->
+                </div>
+                <div class="clinic-subtitle">
+                    <%= clinicSubtitle || '(LAL SAHEB)' %>
+                </div>
+                <div class="contact-info">
+                    <div class="phone-icon">
+                        <%= clinicPhone || '+9472615965 | 7717783520' %>
+                    </div>
+                    <div class="location-icon">
+                        <%= clinicAddress || 'क्लिनिक :- बेलवनवा टाउन हॉल, इमानुएल स्कूल के सामने, मोतिहारी' %>
+                    </div>
+                </div>
+                <div class="clinic-timing">
+                    <div class="timing-title">
+                        <%= timingTitle || 'मिलने का समय' %>
+                    </div>
+                    <div>
+                        <%= morningTiming || 'सुबह 9:00 बजे से 1:00 बजे तक' %>
+                    </div>
+                    <div>
+                        <%= eveningTiming || 'शाम 3:00 बजे से 9:00 बजे तक' %>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Doctor Info -->
+            <div class="header-right">
+                <!-- First two doctors side by side -->
+                <div class="two-doctor">
+                    <% doctors .filter(d=> d.type === 'physician')
+                        .slice(0, 2)
+                        .forEach(function(doctor) { %>
+
+                        <div class="doctor-entry">
+                            <div class="medical-symbol">⚕</div>
+                            <div>
+                                <div class="doctor-name">
+                                    <%= doctor.name %>
+                                </div>
+                                <div class="doctor-degree">
+                                    <%= doctor.degree %>
+                                </div>
+                                <div class="doctor-specialty">
+                                    <%= doctor.specialty %>
+                                </div>
+                                <div class="doctor-reg">Reg. No.-<%= doctor.regNo %>
+                                </div>
+                            </div>
+                        </div>
+
+                        <% }) %>
+                </div>
+
+                <!-- Dentist (full width) -->
+                <% doctors .filter(d=> d.type === 'dentist')
+                    .forEach(function(doctor) { %>
+
+                    <div class="doctor-entry">
+                        <div class="medical-symbol">
+                            <!-- Tooth SVG -->
+                            <svg width="26" height="26" viewBox="0 0 64 64">
+                                <path d="M20 6
+               C12 6 8 14 8 22
+               C8 30 12 36 14 42
+               C16 48 16 58 22 58
+               C26 58 26 44 32 44
+               C38 44 38 58 42 58
+               C48 58 48 48 50 42
+               C52 36 56 30 56 22
+               C56 14 52 6 44 6
+               C38 6 36 10 32 10
+               C28 10 26 6 20 6 Z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" />
+                            </svg>
+                        </div>
+
+                        <div>
+                            <div class="doctor-name">
+                                <%= doctor.name %>
+                            </div>
+                            <div class="doctor-degree">
+                                <%= doctor.degree %>
+                            </div>
+                            <div class="doctor-specialty">
+                                <%= doctor.specialty %>
+                            </div>
+                            <div class="doctor-reg">Reg. No.-<%= doctor.regNo %>
+                            </div>
+                        </div>
+                    </div>
+
+                    <% }) %>
+
+            </div>
+
+        </div>
+
+        <!-- Patient Info Bar -->
+        <div class="patient-info-bar">
+            <div class="patient-info-name">Name: <%= patientName || '' %>
+            </div>
+            <div class="patient-info-address">Add.: <%= patientAddress || '' %>
+            </div>
+            <div class="patient-info-age">Age: <%= patientAge || '' %>
+            </div>
+            <div class="patient-info-weight">Wt.: <%= patientWeight || '' %>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="content-wrapper">
+            <!-- Left: Investigation Column -->
+            <div class="investigation-column">
+                <div class="investigation-title">Investigation:</div>
+                <ul class="investigation-list">
+                    <li>B.P.</li>
+                    <li>Blood</li>
+                    <li>Sugar
+                        <ul class="investigation-nested">
+                            <li>P.P.</li>
+                            <li>F.P.</li>
+                        </ul>
+                    </li>
+                    <li>H.b.%</li>
+                    <li>X-ray</li>
+                </ul>
+
+                <div class="tests-advised">
+                    <% if (labTestDetails && labTestDetails.length> 0) { %>
+
+                        <% labTestDetails.forEach(function(group) { %>
+
+                            <p>
+                                <% if (group.isCurrent) { %>
+                                    Investigations - (<%= group.visitDate %>)
+                                        <% } else { %>
+                                            Investigations - (<%= group.visitDate %>)
+                                                <% } %>
+                            </p>
+
+                            <ul>
+                                <% group.tests.forEach(function(test) { %>
+                                    <li>
+                                        <%= test.testName %>
+                                    </li>
+                                    <% }) %>
+                            </ul>
+
+                            <% }) %>
+
+                                <% } %>
+                </div>
+            </div>
+
+            <!-- Right: Prescription Column -->
+            <div class="prescription-column">
+                <div class="date-line">Date: <%= visitDate || '.............................' %>
+                </div>
+
+                <div class="prescription-content">
+                    <div class="prescription-items">
+                        <div class="rx-symbol_prescription">℞</div>
+                        <% if (medications && medications.length> 0) { %>
+                            <% medications.forEach(function(med, index) { %>
+                                <div class="prescription-item">
+                                    <div class="medication-name">
+                                        <%= index + 1 %>. <%= med.drugName %>
+                                    </div>
+                                    <div class="medication-details">
+                                        <% if (med.dosage) { %>Dosage: <%= med.dosage %>
+                                                <% } %>
+                                                    <% if (med.frequency) { %> | Frequency: <%= med.frequency %>
+                                                            <% } %>
+                                                                <% if (med.timing) { %> | <%= med.timing %>
+                                                                        <% } %>
+                                                                            <% if (med.duration) { %> | Duration: <%=
+                                                                                    med.duration %>
+                                                                                    <% } %>
+                                    </div>
+                                    <% if (med.instructions) { %>
+                                        <div class="medication-instructions">Note: <%= med.instructions %>
+                                        </div>
+                                        <% } %>
+                                </div>
+                                <% }); %>
+                                    <% } %>
+                    </div>
+
+
+                    <% if (notes && notes.trim()) { %>
+                        <div class="notes-section">
+                            <div class="notes-title">Doctor's Notes:</div>
+                            <div class="notes-content">
+                                <%= notes %>
+                            </div>
+                        </div>
+                        <% } %>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-text">
+                <%= footerText || 'यह दिन बाद पूरा फिस लगेगा' %>
+            </div>
+            <div class="footer-disclaimer">NOT VALID FOR MEDICO LEGAL PURPOSE</div>
+        </div>
+    </div>
+</body>
+
+</html>
