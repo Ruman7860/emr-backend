@@ -106,6 +106,7 @@ model Visit {
   staff        Staff          @relation(fields: [staffId], references: [id])
   Prescription Prescription[]
   billings     Billing[]
+  labTests     LabTest[]
 
   @@index([patientId, visitDate(sort: Desc)])
 }
@@ -163,16 +164,16 @@ model Billing {
 
 model LabTest {
   id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  visitId   String    @db.ObjectId
   patientId String    @db.ObjectId
-  name      String
-  date      DateTime
-  results   String?
-  fee       Float
+  tests     String
   createdAt DateTime  @default(now())
   deletedAt DateTime?
 
+  visit   Visit   @relation(fields: [visitId], references: [id])
   patient Patient @relation(fields: [patientId], references: [id])
 
+  @@index([visitId])
   @@index([patientId])
 }
 

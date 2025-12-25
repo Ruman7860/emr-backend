@@ -12,6 +12,8 @@ import { PrescriptionsModule } from './prescriptions/prescriptions.module';
 import { OperationsModule } from './operations/operations.module';
 import { QueueModule } from './queue/queue.module';
 import { SocketModule } from './socket/socket.module';
+import { LabtestsModule } from './labtests/labtests.module';
+import { NotesModule } from './notes/notes.module';
 
 @Module({
   imports: [
@@ -25,6 +27,8 @@ import { SocketModule } from './socket/socket.module';
     OperationsModule,
     QueueModule,
     SocketModule,
+    LabtestsModule,
+    NotesModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
