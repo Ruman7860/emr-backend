@@ -76,6 +76,9 @@ export class PdfService {
                 timeout: 60000
             });
 
+            // Explicitly wait for fonts to be loaded (crucial for Hindi fonts)
+            await page.evaluateHandle('document.fonts.ready');
+
             // Generate PDF
             const pdfBuffer = await page.pdf({
                 format: 'A4',
