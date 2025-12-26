@@ -19,3 +19,9 @@ if [[ -n "$CHROME_PATH" && -x "$CHROME_PATH" ]]; then
 else
     echo "Warning: Chrome executable not found after install!"
 fi
+
+echo "Chrome install complete. Listing cache contents:"
+echo "Chrome install complete. Listing actual cache contents:"
+ls -la "$PUPPETEER_CACHE_DIR" || echo "Cache dir exists but listing failed (non-critical)"
+ls -la "$PUPPETEER_CACHE_DIR/chrome" || true
+ls -la "$PUPPETEER_CACHE_DIR/chrome/linux-"*"/chrome-linux64/" || true

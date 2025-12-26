@@ -1,6 +1,36 @@
+# Use the official Puppeteer image which includes Chrome
 FROM ghcr.io/puppeteer/puppeteer:24.34.0
 
+# Set environment variables for Puppeteer
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
 
-    
+# Switch to root to install dependencies
+USER root
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Set working directory
+WORKDIR /usr/src/app
+
+# Copy package files
+COPY package*.json pnpm-lock.yaml ./
+
+# Install dependencies including devDependencies (needed for build)
+RUN pnpm install --frozen-lockfile
+
+# Copy the rest of the application code
+COPY . .
+
+# Generate Prisma Client
+RUN npx prisma generate
+
+# Build the application
+RUN pnpm run build
+
+# Expose the application port
+EXPOSE 3000
+
+# Start the server (using start:prod or dist/src/main)
+CMD ["node", "dist/src/main"]
