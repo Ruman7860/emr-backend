@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import * as ejs from 'ejs';
 import * as puppeteer from 'puppeteer';
 import * as path from 'path';
+import { join } from 'path';
 
 export interface PrescriptionData {
     clinicNameHindi: string;
@@ -50,10 +51,19 @@ export class PdfService {
             // Render EJS template
             const templatePath = path.join(__dirname, '../../prescriptions/templates/prescription.ejs');
             const html = await ejs.renderFile(templatePath, data);
+            const executablePath = join(
+                process.cwd(),                     // Project root
+                '.cache',
+                'puppeteer',
+                'chrome',
+                'linux-143.0.7499.169',            // <-- Update if your build logs show a different version
+                'chrome-linux64',
+                'chrome'
+            );
 
             // Launch Puppeteer
             const browser = await puppeteer.launch({
-                executablePath: process.env.NODE_ENV === "production" ? process.env.PUPPETEER_EXECUTABLE_PATH : puppeteer.executablePath(),
+                executablePath,
                 headless: true,
                 args: ['--no-sandbox', '--disable-setuid-sandbox'],
             });
