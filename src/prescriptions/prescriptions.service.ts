@@ -579,4 +579,75 @@ export class PrescriptionsService {
       };
     }
   }
+
+  async getPrescriptionDocumentsByPatient(patientId: string, user: { id: string; tenantId: string }) {
+    // Check authorization
+    if (!(await this.isAuthorizedInTenant(user.id, user.tenantId, [Role.DOCTOR, Role.ADMIN, Role.STAFF, Role.NURSE]))) {
+      return {
+        success: false,
+        message: 'You are not authorized to view prescription documents',
+        statusCode: 403,
+        data: null,
+      };
+    }
+
+    try {
+      // Verify patient exists and is in tenant
+      const patient = await this.prisma.patient.findUnique({
+        where: { id: patientId },
+        select: { tenantId: true },
+      });
+
+      if (!patient || patient.tenantId !== user.tenantId) {
+        return {
+          success: false,
+          message: 'Patient not found or not in your tenant',
+          statusCode: 404,
+          data: null,
+        };
+      }
+
+      // Fetch all prescription documents for the patient
+      const documents = await this.prisma.prescriptionDocument.findMany({
+        where: {
+          patientId,
+        },
+        include: {
+          prescription: {
+            include: {
+              visit: true,
+            },
+          },
+        },
+        orderBy: {
+          generatedAt: 'desc',
+        },
+      });
+
+      // Generate signed URLs for each document
+      const documentsWithUrls = documents.map((doc) => ({
+        id: doc.id,
+        prescriptionId: doc.prescriptionId,
+        visitId: doc.visitId,
+        version: doc.version,
+        generatedAt: doc.generatedAt,
+        visitDate: doc.prescription.visit.visitDate,
+        downloadUrl: this.cloudinaryService.getSignedUrl(doc.cloudinaryPublicId, 300),
+      }));
+
+      return {
+        success: true,
+        message: 'Prescription documents retrieved successfully',
+        statusCode: 200,
+        data: documentsWithUrls,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to retrieve prescription documents: ${error.message}`,
+        statusCode: 500,
+        data: error.message,
+      };
+    }
+  }
 }

@@ -44,4 +44,9 @@ export class PrescriptionsController {
   async downloadPDF(@Param('id') id: string, @Req() req) {
     return this.prescriptionsService.getPrescriptionDownloadUrl(id, req.user);
   }
+
+  @Get('documents/patient/:patientId')
+  async getPrescriptionDocumentsByPatient(@Param('patientId') patientId: string, @Req() req) {
+    return this.prescriptionsService.getPrescriptionDocumentsByPatient(patientId, req.user);
+  }
 }

@@ -99,6 +99,7 @@ model Visit {
   todayVisit      Patient[]     @relation("TodayVisit")
   isFirstVisit    Boolean       @default(false)
   feeValidUntil   DateTime?
+  consultationTime Int?
   createdAt       DateTime      @default(now())
   deletedAt       DateTime?
 

@@ -16,4 +16,9 @@ export class QueueController {
   async startConsultation(@Req() req, @Body() body: { patientId: string; visitId: string }) {
     return this.queueService.startConsultation(req.user, body.patientId, body.visitId);
   }
+
+  @Post('end-consultation')
+  async endConsultation(@Req() req, @Body() body: { patientId: string; visitId: string; durationInSeconds: number }) {
+    return this.queueService.endConsultation(req.user, body.patientId, body.visitId, body.durationInSeconds);
+  }
 }

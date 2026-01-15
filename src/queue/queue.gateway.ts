@@ -125,7 +125,22 @@ export class QueueGateway
     this.server.to(tenantRoom).emit('QUEUE_UPDATE', payload);
   }
 
+  emitConsultationEnd(payload: {
+    tenantId: string;
+    patientId: string;
+    visitId: string;
+    doctorId: string;
+    status: string;
+    consultationTime: number;
+  }) {
+    // 1. Notify doctors (so they can see completed status)
+    const doctorRoom = this.getDoctorsRoom(payload.tenantId);
+    this.server.to(doctorRoom).emit('CONSULTATION_END', payload);
 
+    // 2. Notify queue view for general updates
+    const tenantRoom = this.getTenantRoom(payload.tenantId);
+    this.server.to(tenantRoom).emit('QUEUE_UPDATE', payload);
+  }
 
   handleDisconnect(client: Socket) {
     console.log('Client disconnected:', client.id);

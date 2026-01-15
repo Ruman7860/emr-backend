@@ -73,7 +73,7 @@ export class QueueService {
           tenantId: user.tenantId,
           deletedAt: null,
           visitStatus: {
-            in: [VisitStatus.PAID_WAITING, VisitStatus.IN_CONSULTATION],
+            in: [VisitStatus.PAID_WAITING, VisitStatus.IN_CONSULTATION, VisitStatus.COMPLETED],
           },
         },
       },
@@ -88,8 +88,8 @@ export class QueueService {
             age: true,
             gender: true,
             patientNumber: true,
-            visitStatus : true,
-            doctorId:true,
+            visitStatus: true,
+            doctorId: true,
           },
         },
       },
@@ -103,7 +103,8 @@ export class QueueService {
         visitId: v.id,
         visitDate: v.visitDate,
         chiefComplaint: v.chiefComplaint,
-        patient: {doctorUserId:user.id , ...v.patient},
+        consultationTime: v.consultationTime,
+        patient: { doctorUserId: user.id, ...v.patient },
       })),
     };
   }
@@ -202,6 +203,96 @@ export class QueueService {
         visitId,
         patientId,
         status: VisitStatus.IN_CONSULTATION,
+      },
+    };
+  }
+
+  // ===============================
+  // ACTION: END CONSULTATION
+  // ===============================
+
+  async endConsultation(
+    user: { id: string; role: string; tenantId: string },
+    patientId: string,
+    visitId: string,
+    durationInSeconds: number,
+  ) {
+    if (user.role !== 'DOCTOR') {
+      throw new ForbiddenException('Only doctors can end a consultation');
+    }
+
+    // 1️⃣ Resolve doctorId (ensure doctor profile exists)
+    const doctor = await this.prisma.doctor.findFirst({
+      where: {
+        userId: user.id,
+        tenantId: user.tenantId,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (!doctor) {
+      throw new ForbiddenException('Doctor profile not found');
+    }
+
+    // 2️⃣ Verify the patient is in consultation with this doctor
+    const patient = await this.prisma.patient.findUnique({
+      where: { id: patientId },
+      select: { visitStatus: true, doctorId: true, tenantId: true },
+    });
+
+    if (!patient) {
+      throw new ForbiddenException('Patient not found');
+    }
+
+    if (patient.tenantId !== user.tenantId) {
+      throw new ForbiddenException('Unauthorized access to patient');
+    }
+
+    if (patient.visitStatus !== VisitStatus.IN_CONSULTATION) {
+      throw new ForbiddenException('Patient is not in consultation');
+    }
+
+    if (patient.doctorId !== doctor.id) {
+      throw new ForbiddenException('You are not the assigned doctor for this consultation');
+    }
+
+    // 3️⃣ Update patient status to COMPLETED
+    await this.prisma.patient.update({
+      where: { id: patientId },
+      data: {
+        visitStatus: VisitStatus.COMPLETED,
+      },
+    });
+
+    // 4️⃣ Update visit with consultation duration (in seconds)
+    await this.prisma.visit.update({
+      where: { id: visitId },
+      data: {
+        consultationTime: durationInSeconds,
+      },
+    });
+
+    // 5️⃣ Emit Event
+    const eventData = {
+      tenantId: user.tenantId,
+      patientId,
+      visitId,
+      doctorId: doctor.id,
+      status: VisitStatus.COMPLETED,
+      consultationTime: durationInSeconds,
+    };
+
+    this.gateway.emitConsultationEnd(eventData);
+
+    return {
+      success: true,
+      message: 'Consultation ended successfully',
+      data: {
+        visitId,
+        patientId,
+        status: VisitStatus.COMPLETED,
+        consultationTime: durationInSeconds,
       },
     };
   }
