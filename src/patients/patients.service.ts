@@ -225,6 +225,7 @@ export class PatientsService {
           staffId: user.id,
           chiefComplaint,
           notes: 'Initial registration visit',
+          visitStatus: 'PENDING_PAYMENT',
           visitFee: registrationFee,
           isFirstVisit: true,
           deletedAt: null,
@@ -328,7 +329,7 @@ export class PatientsService {
         },
       };
     } catch (error: any) {
-      console.log("Error",error.message)
+      console.log("Error", error.message)
       return {
         success: false,
         message: 'Failed to retrieve patients',
@@ -406,22 +407,13 @@ export class PatientsService {
             },
             Prescription: {
               where: { deletedAt: null },
-              select: {
-                id: true,
-                createdAt: true,
-              },
+              include:{
+                prescriptionDocuments:true
+              }
             },
             billings: {
               where: { deletedAt: null },
               orderBy: { date: 'desc' },
-              select: {
-                id: true,
-                date: true,
-                type: true,
-                amount: true,
-                status: true,
-                paymentMode: true,
-              },
             },
           },
         },
@@ -878,6 +870,14 @@ export class PatientsService {
           visitStatus: markPaid ? 'PAID_WAITING' : 'PENDING_PAYMENT',
         },
       });
+
+      // 5.3 Update Visit status (NEW)
+      await tx.visit.update({
+        where: { id: visitId },
+        data: {
+          visitStatus: markPaid ? 'PAID_WAITING' : 'PENDING_PAYMENT',
+        },
+      });
     });
 
     if (markPaid) {
@@ -890,7 +890,7 @@ export class PatientsService {
       // });
       this.eventEmitter.emit('queue.add', {
         tenantId: user.tenantId,
-        doctorId: visit.doctorId!, 
+        doctorId: visit.doctorId!,
         visitId: visit.id,
         patientName: patient.fullName,
         visitDate: visit.visitDate,

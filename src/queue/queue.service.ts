@@ -180,7 +180,7 @@ export class QueueService {
       where: { id: visitId },
       data: {
         doctorId: doctor.id,
-        // Optionally update visit status if you had a status on Visit model too, but schemas show it on Patient
+        visitStatus: VisitStatus.IN_CONSULTATION, // ✅ Update status
       },
     });
 
@@ -270,6 +270,7 @@ export class QueueService {
       where: { id: visitId },
       data: {
         consultationTime: durationInSeconds,
+        visitStatus: VisitStatus.COMPLETED, // ✅ Update status
       },
     });
 

@@ -20,8 +20,6 @@ export class EventGateway {
 
   handleConnection(client: Socket) {
     const token = client.handshake.auth.token;
-    console.log('Client connected event gateway:', client.id, token);
-
     if (!token) {
       client.disconnect();
       return;

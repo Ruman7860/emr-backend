@@ -37,7 +37,7 @@ export class PrescriptionsController {
 
   @Post('generate-pdf')
   async generatePDF(@Body() dto: GeneratePrescriptionPdfDto, @Req() req) {
-    return this.prescriptionsService.generatePrescriptionPDF(dto.visitId, req.user, dto.version || 1);
+    return this.prescriptionsService.generatePrescriptionPDF(dto.visitId, req.user);
   }
 
   @Get('documents/:id/download')

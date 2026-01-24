@@ -320,7 +320,7 @@ export class PrescriptionsService {
     }
   }
 
-  async generatePrescriptionPDF(visitId: string, user: { id: string; tenantId: string }, version: number = 1) {
+  async generatePrescriptionPDF(visitId: string, user: { id: string; tenantId: string }) {
     // Check authorization
     if (!(await this.isAuthorizedInTenant(user.id, user.tenantId, [Role.DOCTOR, Role.ADMIN]))) {
       return {
@@ -359,6 +359,7 @@ export class PrescriptionsService {
               LabTest: true,
             },
           },
+          prescriptionDocuments: true, // Fetch existing docs to count version
         },
       });
 
@@ -370,6 +371,9 @@ export class PrescriptionsService {
           data: null,
         };
       }
+
+      // Calculate next version
+      const nextVersion = (prescription.prescriptionDocuments?.length || 0) + 1;
 
       // Verify tenant access
       if (prescription.visit.patient.tenantId !== user.tenantId) {
@@ -481,7 +485,7 @@ export class PrescriptionsService {
       const pdfBuffer = await this.pdfService.generatePrescriptionPDF(pdfData);
 
       // Upload to Cloudinary
-      const publicId = `prescriptions/patient_${prescription.patientId}/visit_${visitId}/prescription_v${version}`;
+      const publicId = `prescriptions/patient_${prescription.patientId}/visit_${visitId}/prescription_v${nextVersion}`;
       const uploadResult = await this.cloudinaryService.uploadPDF(pdfBuffer, publicId);
 
       // Save document record
@@ -493,7 +497,7 @@ export class PrescriptionsService {
           doctorId: prescription.visit.doctorId,
           cloudinaryPublicId: uploadResult.public_id,
           fileUrl: uploadResult.secure_url,
-          version,
+          version: nextVersion,
         },
       });
 
@@ -507,7 +511,7 @@ export class PrescriptionsService {
         data: {
           documentId: prescriptionDocument.id,
           downloadUrl: signedUrl,
-          version,
+          version: nextVersion,
         },
       };
     } catch (error) {
@@ -632,6 +636,7 @@ export class PrescriptionsService {
         version: doc.version,
         generatedAt: doc.generatedAt,
         visitDate: doc.prescription.visit.visitDate,
+
         downloadUrl: this.cloudinaryService.getSignedUrl(doc.cloudinaryPublicId, 300),
       }));
 

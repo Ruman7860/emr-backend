@@ -42,8 +42,6 @@ export class QueueGateway
   async handleConnection(client: Socket) {
     try {
       const token = client.handshake.auth.token;
-      console.log('Client connected:', client.id, token);
-
       if (!token) {
         client.disconnect();
         return;

@@ -99,6 +99,7 @@ model Visit {
   todayVisit      Patient[]     @relation("TodayVisit")
   isFirstVisit    Boolean       @default(false)
   feeValidUntil   DateTime?
+  visitStatus     VisitStatus   @default(PENDING_PAYMENT)
   consultationTime Int?
   createdAt       DateTime      @default(now())
   deletedAt       DateTime?
@@ -188,6 +189,7 @@ model PrescriptionDocument {
   visitId            String    @db.ObjectId
   doctorId           String?   @db.ObjectId
   cloudinaryPublicId String
+  name               String?
   fileUrl            String
   version            Int       @default(1)
   generatedAt        DateTime  @default(now())
