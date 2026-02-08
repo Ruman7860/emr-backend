@@ -109,6 +109,7 @@ export class QueueService {
       data: activeVisits.map((v) => ({
         visitId: v.id,
         visitDate: v.visitDate,
+        updatedAt: v.updatedAt,
         chiefComplaint: v.chiefComplaint,
         consultationTime: v.consultationTime,
         patient: { doctorUserId: user.id, ...v.patient },
@@ -181,6 +182,7 @@ export class QueueService {
       data: visits.map((v) => ({
         visitId: v.id,
         visitDate: v.visitDate,
+        updatedAt: v.updatedAt,
         visitStatus: v.visitStatus,
         chiefComplaint: v.chiefComplaint,
         consultationTime: v.consultationTime,
