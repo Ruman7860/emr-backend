@@ -3,6 +3,7 @@ import { PatientsService } from './patients.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
+import { CreateRepeatVisitDto } from './dto/create-repeat-visit.dto';
 import { PatientStatus } from '@prisma/client';
 import { CollectPaymentDto } from './dto/collect-payment.dto';
 
@@ -68,6 +69,19 @@ export class PatientsController {
     return this.patientsService.collectPayment(
       patientId,
       body,
+      req.user
+    );
+  }
+
+  @Post(':id/repeat-visit')
+  async createRepeatVisit(
+    @Param('id') patientId: string,
+    @Body() createRepeatVisitDto: CreateRepeatVisitDto,
+    @Req() req: { user: { id: string; tenantId: string } }
+  ) {
+    return this.patientsService.createRepeatVisit(
+      patientId,
+      createRepeatVisitDto,
       req.user
     );
   }

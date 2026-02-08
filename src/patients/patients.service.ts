@@ -308,7 +308,7 @@ export class PatientsService {
       const [patients, total] = await this.prisma.$transaction([
         this.prisma.patient.findMany({
           where,
-          include: { doctor: true, visits: { where: { deletedAt: null } }, Billing: { where: { deletedAt: null } }, },
+          include: { doctor: true, visits: { where: { deletedAt: null }, orderBy: { visitDate: 'desc' } }, Billing: { where: { deletedAt: null } }, },
           skip,
           take: limit,
           orderBy: { createdAt: 'desc' },
@@ -316,12 +316,24 @@ export class PatientsService {
         this.prisma.patient.count({ where }),
       ]);
 
+      // Compute lastCompletedVisitDate for each patient
+      const patientsWithLastVisit = patients.map((patient: any) => {
+        const completedVisit = patient.visits?.find((v: any) => v.visitStatus === 'COMPLETED');
+        console.log("completedVisit",completedVisit)
+        return {
+          ...patient,
+          lastCompletedVisitDate: completedVisit?.visitDate || null,
+        };
+      });
+
+      console.log("patientsWithLastVisit",patientsWithLastVisit)
+
       return {
         success: true,
         message: 'Patients retrieved successfully',
         statusCode: 200,
         data: {
-          patients,
+          patients: patientsWithLastVisit,
           total,
           page,
           limit,
@@ -407,8 +419,8 @@ export class PatientsService {
             },
             Prescription: {
               where: { deletedAt: null },
-              include:{
-                prescriptionDocuments:true
+              include: {
+                prescriptionDocuments: true
               }
             },
             billings: {
@@ -902,6 +914,180 @@ export class PatientsService {
       message: 'Payment collected successfully',
       statusCode: 200,
     };
+  }
+
+  async createRepeatVisit(
+    patientId: string,
+    dto: { chiefComplaint?: string; registrationFee?: number; doctorId?: string },
+    user: { id: string; tenantId: string }
+  ) {
+    // 1️⃣ Authorization
+    if (!(await this.isAuthorizedInTenant(user.id, user.tenantId))) {
+      return {
+        success: false,
+        message: 'You are not authorized to create visits in this tenant',
+        statusCode: 403,
+        data: null,
+      };
+    }
+
+    // 2️⃣ Validate patient exists and belongs to tenant
+    const patient = await this.prisma.patient.findFirst({
+      where: {
+        id: patientId,
+        tenantId: user.tenantId,
+        deletedAt: null,
+      },
+    });
+
+    if (!patient) {
+      return {
+        success: false,
+        message: 'Patient not found',
+        statusCode: 404,
+        data: null,
+      };
+    }
+
+    // 3️⃣ Validate patient's current visit is COMPLETED
+    if (patient.visitStatus !== 'COMPLETED') {
+      return {
+        success: false,
+        message: `Cannot create repeat visit. Current visit status is ${patient.visitStatus}, expected COMPLETED`,
+        statusCode: 400,
+        data: null,
+      };
+    }
+
+    // 4️⃣ Find last completed visit date
+    const lastVisit = await this.prisma.visit.findFirst({
+      where: {
+        patientId: patient.id,
+        visitStatus: 'COMPLETED',
+        deletedAt: null,
+      },
+      orderBy: { visitDate: 'desc' },
+    });
+
+    // Calculate if within 21 days
+    const now = new Date();
+    const daysSinceLastVisit = lastVisit
+      ? Math.floor((now.getTime() - new Date(lastVisit.visitDate).getTime()) / (1000 * 60 * 60 * 24))
+      : 999; // If no last visit, treat as after 21 days
+    const isWithin21Days = daysSinceLastVisit <= 21;
+
+    // 5️⃣ Validate fee for visits after 21 days
+    if (!isWithin21Days && (!dto.registrationFee || dto.registrationFee <= 0)) {
+      return {
+        success: false,
+        message: 'Visit fee is required for revisits after 21 days',
+        statusCode: 400,
+        data: null,
+      };
+    }
+
+    // 6️⃣ Validate doctor if provided
+    const doctorId = dto.doctorId || patient.doctorId || null;
+    if (dto.doctorId) {
+      const doctor = await this.prisma.doctor.findUnique({
+        where: { id: dto.doctorId, tenantId: user.tenantId, deletedAt: null },
+      });
+      if (!doctor) {
+        return {
+          success: false,
+          message: 'Doctor not found in this tenant',
+          statusCode: 404,
+          data: null,
+        };
+      }
+    }
+
+    try {
+      // 7️⃣ Create new Visit
+      const newVisit = await this.prisma.visit.create({
+        data: {
+          patientId: patient.id,
+          doctorId: doctorId,
+          staffId: user.id,
+          chiefComplaint: dto.chiefComplaint || patient.chiefComplaint || null,
+          notes: isWithin21Days ? 'Free follow-up visit (within 21 days)' : 'Repeat visit',
+          visitStatus: isWithin21Days ? 'PAID_WAITING' : 'PENDING_PAYMENT',
+          visitFee: isWithin21Days ? null : (dto.registrationFee as number),
+          isFirstVisit: false,
+          within21: isWithin21Days,
+          deletedAt: null,
+        },
+      });
+
+      // 8️⃣ Update Patient to point to new visit
+      const updatedPatient = await this.prisma.patient.update({
+        where: { id: patient.id },
+        data: {
+          todayVisitId: newVisit.id,
+          visitStatus: isWithin21Days ? 'PAID_WAITING' : 'PENDING_PAYMENT',
+          noOfVisits: { increment: 1 },
+          // Update doctorId if a new one was provided
+          ...(dto.doctorId && { doctorId: dto.doctorId }),
+          // Update chief complaint if provided
+          ...(dto.chiefComplaint && { chiefComplaint: dto.chiefComplaint }),
+        },
+      });
+
+      // 9️⃣ Case 1: Within 21 days - emit queue event (no billing)
+      if (isWithin21Days) {
+        // Emit queue event for immediate assignment
+        this.eventEmitter.emit('queue.add', {
+          tenantId: user.tenantId,
+          doctorId: doctorId!,
+          visitId: newVisit.id,
+          patientName: patient.fullName,
+          visitDate: newVisit.visitDate,
+        });
+
+        return {
+          success: true,
+          message: 'Free follow-up visit created (within 21 days)',
+          statusCode: 201,
+          data: {
+            ...updatedPatient,
+            within21Days: true,
+            requiresPayment: false,
+          },
+        };
+      }
+
+      // 🔟 Case 2: After 21 days - create billing entry
+      await this.prisma.billing.create({
+        data: {
+          patientId: patient.id,
+          visitId: newVisit.id,
+          type: 'CONSULTATION',
+          amount: dto.registrationFee!,
+          status: 'UNPAID',
+          paymentMode: null,
+          deletedAt: null,
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Repeat visit created successfully',
+        statusCode: 201,
+        data: {
+          ...updatedPatient,
+          within21Days: false,
+          requiresPayment: true,
+        },
+      };
+    } catch (error) {
+      console.error('Error creating repeat visit:', error);
+      return {
+        success: false,
+        message: 'Failed to create repeat visit',
+        statusCode: 500,
+        data: error.message,
+      };
+    }
   }
 
 

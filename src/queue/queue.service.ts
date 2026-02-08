@@ -64,21 +64,100 @@ export class QueueService {
       throw new ForbiddenException('Doctor profile not found');
     }
 
-    // 2️⃣ Fetch queue
+    // 2️⃣ Fetch ONLY active queue (PAID_WAITING, IN_CONSULTATION)
+    // Use patient.todayVisitId to ensure we only show the latest visit per patient
     const visits = await this.prisma.visit.findMany({
       where: {
-        doctorId: doctor.id, // ✅ FIXED
+        doctorId: doctor.id,
         deletedAt: null,
+        visitStatus: {
+          in: [VisitStatus.PAID_WAITING, VisitStatus.IN_CONSULTATION],
+        },
         patient: {
           tenantId: user.tenantId,
           deletedAt: null,
-          visitStatus: {
-            in: [VisitStatus.PAID_WAITING, VisitStatus.IN_CONSULTATION, VisitStatus.COMPLETED],
-          },
+          // Ensure this is the patient's current active visit
+          todayVisitId: { not: null },
         },
       },
       orderBy: {
         visitDate: 'asc',
+      },
+      include: {
+        patient: {
+          select: {
+            id: true,
+            fullName: true,
+            age: true,
+            gender: true,
+            patientNumber: true,
+            visitStatus: true,
+            doctorId: true,
+            todayVisitId: true,
+          },
+        },
+      },
+    });
+
+    // 3️⃣ Filter to only include visits that are the patient's current visit (todayVisitId)
+    const activeVisits = visits.filter((v) => v.patient.todayVisitId === v.id);
+
+    return {
+      success: true,
+      message: 'Queue fetched successfully',
+      statusCode: 200,
+      data: activeVisits.map((v) => ({
+        visitId: v.id,
+        visitDate: v.visitDate,
+        chiefComplaint: v.chiefComplaint,
+        consultationTime: v.consultationTime,
+        patient: { doctorUserId: user.id, ...v.patient },
+      })),
+    };
+  }
+
+  // ===============================
+  // REST: GET COMPLETED/CANCELLED QUEUE
+  // ===============================
+
+  async getCompletedQueue(user: {
+    id: string;
+    role: string;
+    tenantId: string;
+  }) {
+    if (user.role !== 'DOCTOR') {
+      throw new ForbiddenException('Only doctors can access queue');
+    }
+
+    // 1️⃣ Resolve doctorId from userId
+    const doctor = await this.prisma.doctor.findFirst({
+      where: {
+        userId: user.id,
+        tenantId: user.tenantId,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (!doctor) {
+      throw new ForbiddenException('Doctor profile not found');
+    }
+
+    // 3️⃣ Fetch COMPLETED and CANCELLED visits for today
+    const visits = await this.prisma.visit.findMany({
+      where: {
+        doctorId: doctor.id,
+        deletedAt: null,
+        visitStatus: {
+          in: [VisitStatus.COMPLETED, VisitStatus.CANCELLED],
+        },
+        patient: {
+          tenantId: user.tenantId,
+          deletedAt: null,
+        },
+      },
+      orderBy: {
+        visitDate: 'desc',
       },
       include: {
         patient: {
@@ -97,17 +176,107 @@ export class QueueService {
 
     return {
       success: true,
-      message: 'Queue fetched successfully',
+      message: 'Completed queue fetched successfully',
       statusCode: 200,
       data: visits.map((v) => ({
         visitId: v.id,
         visitDate: v.visitDate,
+        visitStatus: v.visitStatus,
         chiefComplaint: v.chiefComplaint,
         consultationTime: v.consultationTime,
         patient: { doctorUserId: user.id, ...v.patient },
       })),
     };
   }
+
+  // ===============================
+  // ACTION: CANCEL VISIT
+  // ===============================
+
+  async cancelVisit(
+    user: { id: string; role: string; tenantId: string },
+    patientId: string,
+    visitId: string,
+  ) {
+    // 1️⃣ Verify the patient exists and belongs to this tenant
+    const patient = await this.prisma.patient.findFirst({
+      where: {
+        id: patientId,
+        tenantId: user.tenantId,
+        deletedAt: null,
+      },
+    });
+
+    if (!patient) {
+      return {
+        success: false,
+        message: 'Patient not found',
+        statusCode: 404,
+      };
+    }
+
+    // 2️⃣ Verify the visit belongs to this patient and is cancellable
+    const visit = await this.prisma.visit.findFirst({
+      where: {
+        id: visitId,
+        patientId: patientId,
+        deletedAt: null,
+      },
+    });
+
+    if (!visit) {
+      return {
+        success: false,
+        message: 'Visit not found',
+        statusCode: 404,
+      };
+    }
+
+    // Only allow cancellation for PAID_WAITING status
+    if (visit.visitStatus !== VisitStatus.PAID_WAITING) {
+      return {
+        success: false,
+        message: `Cannot cancel visit with status: ${visit.visitStatus}. Only PAID_WAITING visits can be cancelled.`,
+        statusCode: 400,
+      };
+    }
+
+    // 3️⃣ Update Visit status to CANCELLED
+    await this.prisma.visit.update({
+      where: { id: visitId },
+      data: {
+        visitStatus: VisitStatus.CANCELLED,
+      },
+    });
+
+    // 4️⃣ Update Patient status to CANCELLED
+    await this.prisma.patient.update({
+      where: { id: patientId },
+      data: {
+        visitStatus: VisitStatus.CANCELLED,
+      },
+    });
+
+    // 5️⃣ Emit socket event for real-time update
+    this.eventEmitter.emit('queue.cancelled', {
+      tenantId: user.tenantId,
+      patientId,
+      visitId,
+      status: VisitStatus.CANCELLED,
+    });
+
+    return {
+      success: true,
+      message: 'Visit cancelled successfully',
+      statusCode: 200,
+      data: {
+        visitId,
+        patientId,
+        status: VisitStatus.CANCELLED,
+      },
+    };
+  }
+
   // ===============================
   // ACTION: START CONSULTATION
   // ===============================

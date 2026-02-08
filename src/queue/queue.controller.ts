@@ -12,6 +12,11 @@ export class QueueController {
     return this.queueService.getDoctorQueue(req.user);
   }
 
+  @Get('completed')
+  async getCompletedQueue(@Req() req) {
+    return this.queueService.getCompletedQueue(req.user);
+  }
+
   @Post('start-consultation')
   async startConsultation(@Req() req, @Body() body: { patientId: string; visitId: string }) {
     return this.queueService.startConsultation(req.user, body.patientId, body.visitId);
@@ -20,5 +25,10 @@ export class QueueController {
   @Post('end-consultation')
   async endConsultation(@Req() req, @Body() body: { patientId: string; visitId: string; durationInSeconds: number }) {
     return this.queueService.endConsultation(req.user, body.patientId, body.visitId, body.durationInSeconds);
+  }
+
+  @Post('cancel-visit')
+  async cancelVisit(@Req() req, @Body() body: { patientId: string; visitId: string }) {
+    return this.queueService.cancelVisit(req.user, body.patientId, body.visitId);
   }
 }
