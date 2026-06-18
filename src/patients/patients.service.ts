@@ -319,14 +319,11 @@ export class PatientsService {
       // Compute lastCompletedVisitDate for each patient
       const patientsWithLastVisit = patients.map((patient: any) => {
         const completedVisit = patient.visits?.find((v: any) => v.visitStatus === 'COMPLETED');
-        console.log("completedVisit",completedVisit)
         return {
           ...patient,
           lastCompletedVisitDate: completedVisit?.visitDate || null,
         };
       });
-
-      console.log("patientsWithLastVisit",patientsWithLastVisit)
 
       return {
         success: true,
